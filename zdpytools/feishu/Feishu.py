@@ -1,5 +1,7 @@
+from urllib.parse import urlencode
 from .const import *
 from .exception import LarkException
+from ..utils.log import logger
 import httpx
 import json
 import time
@@ -7,6 +9,7 @@ import os
 
 class Feishu:
     def __init__(self, app_id=os.getenv("FEISHU_APP_ID"), app_secret=os.getenv("FEISHU_APP_SECRET"), print_feishu_log=True):
+        print(app_id, app_secret)
         if not app_id or not app_secret:
             raise ValueError("app_id 或 app_secret 为空")
         self._app_id = app_id
@@ -65,7 +68,7 @@ class Feishu:
         }
 
         if self.print_feishu_log:
-            logger.debug(f"{method} 请求飞书接口: {unquote(url)}")
+            logger.debug(f"{method} 请求飞书接口: {url}")
             logger.debug(f"请求体: {req_body}")
 
         try:
@@ -151,3 +154,98 @@ class Feishu:
         """
         if self.client:
             await self.client.aclose()
+
+    async def tables_fields(self, app_token, table_id, query_params=None, field_id="", req_body=None):
+        self.__dict__.update(locals())
+        await self._authorize_tenant_access_token()
+        url = "{}{}".format(
+            FEISHU_HOST, TABLES_FIELDS
+        ).replace(':app_token', app_token).replace(':table_id', table_id).replace(':field_id', field_id)
+
+        # 如果url是以/结尾的，就去掉
+        if url[-1] == '/':
+            url = url[:-1]
+
+        if query_params:
+            url = url + "?" + urlencode(query_params)
+
+        if not req_body and not field_id:
+            action = "GET"
+        elif req_body and not field_id:
+            action = "POST"
+        elif req_body and field_id:
+            action = "PUT"
+        elif not req_body and field_id:
+            action = "DELETE"
+
+        resp = await self.req_feishu_api(action, url=url, req_body=req_body)
+        return resp.get('data')
+
+    async def tables_fields_info(self, field_names: list, app_token, table_id, query_params={}):
+        """
+        获取表格字段信息
+        :param field_names: 字段名列表 ["字段名1","字段名2","字段名3"]
+        :param app_token:
+        :param table_id:
+        :param query_params:留空即可
+
+        返回值中：
+        type可选值有：
+            1：多行文本
+            2：数字
+            3：单选
+            4：多选
+            5：日期
+            7：复选框
+            11：人员
+            13：电话号码
+            15：超链接
+            17：附件
+            18：关联
+            20：公式
+            21：双向关联
+            22：地理位置
+            23：群组
+            1001：创建时间
+            1002：最后更新时间
+            1003：创建人
+            1004：修改人
+            1005：自动编号
+        """
+        # 初始化字段名字典列表
+        field_name_dicts = []
+        for field_name in field_names:
+            if type(field_name) is str:
+                field_name_dicts.append({"field_name": field_name})
+            else:
+                field_name_dicts.append(field_name)
+
+        # 初始化查询参数
+        query_params['page_size'] = 100
+        current_page_token = None
+
+        while True:
+            # 如果有上一页的token，添加到查询参数中
+            if current_page_token:
+                query_params['page_token'] = current_page_token
+
+            # 获取当前页的字段信息
+            tables_fields_res = await self.tables_fields(app_token, table_id, query_params)
+
+            # 处理当前页的字段信息
+            field_items = tables_fields_res.get('items', [])
+            for field_item in field_items:
+                field_name = field_item.get('field_name')
+                for field_name_dict in field_name_dicts:
+                    if field_name_dict.get('field_name') == field_name:
+                        field_name_dict.update(field_item)
+
+            # 检查是否还有下一页
+            has_more = tables_fields_res.get('has_more', False)
+            if not has_more:
+                break
+
+            # 更新下一页的token
+            current_page_token = tables_fields_res.get('page_token')
+
+        return field_name_dicts
