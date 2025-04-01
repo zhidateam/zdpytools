@@ -18,9 +18,10 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.12",
     install_requires=[
-        "loguru>=0.6.0",
-        "httpx>=0.24.0",
+        "loguru>=0.7.3",
+        "httpx>=0.27.2",
+        "pyyaml>=6.0.2"
     ],
 )

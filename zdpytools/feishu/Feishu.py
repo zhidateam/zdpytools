@@ -14,11 +14,21 @@ import os
 
 class Feishu(FeishuBase):
     def __init__(self, app_id=os.getenv("FEISHU_APP_ID"), app_secret=os.getenv("FEISHU_APP_SECRET"), print_feishu_log=True):
+        """
+        初始化飞书API客户端
+        :param app_id: 飞书应用的APP ID
+        :param app_secret: 飞书应用的APP Secret
+        :param print_feishu_log: 是否打印飞书API日志
+        """
         super().__init__(app_id, app_secret, print_feishu_log)
+
 
     async def get_tables_fields(self, app_token: str, table_id: str) -> dict:
         """
-        获取多维表格字段作为字典，key是字段名字，value是字段信息
+        获取多维表格字段信息
+        :param app_token: 多维表格的app_token
+        :param table_id: 表格ID
+        :return: 字段信息字典，key为字段名，value为字段信息
         """
         try:
             res = await self.tables_fields(app_token, table_id)
@@ -37,6 +47,11 @@ class Feishu(FeishuBase):
     async def clone_fields(self, dest_base_id: str, dest_table_id: str, source_base_id: str, source_table_id: str) -> bool:
         """
         克隆源表格的字段到目标表格
+        :param dest_base_id: 目标多维表格的app_token
+        :param dest_table_id: 目标表格ID
+        :param source_base_id: 源多维表格的app_token
+        :param source_table_id: 源表格ID
+        :return: 是否克隆成功
         """
         #忽略的ui_type
         ignore_ui_type = [
