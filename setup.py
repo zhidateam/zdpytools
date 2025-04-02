@@ -22,6 +22,7 @@ setup(
     install_requires=[
         "loguru>=0.7.3",
         "httpx>=0.27.2",
-        "pyyaml>=6.0.2"
+        "pyyaml>=6.0.2",
+        "oss2>=2.19.1"
     ],
 )
