@@ -18,8 +18,8 @@ pip install build twine
 
 ```bash
 rm -rf build/ dist/ *.egg-info/
-# 或在Windows上
-rmdir /s /q build dist *.egg-info
+# 或在Windows上 Powershell
+Remove-Item -Recurse -Force build, dist, *.egg-info
 ```
 
 2. 构建包：
