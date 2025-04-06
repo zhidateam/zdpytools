@@ -75,6 +75,23 @@ asyncio.run(example())
 
 
 
+
+
+## 封装更新
+
+修改setup.py中的版本
+```python
+    version="xxx",
+```
+运行构建脚本
+```bash
+python build_package.py
+```
+发布
+```bash
+twine upload dist/*
+```
+
 ## 许可证
 
 MIT
