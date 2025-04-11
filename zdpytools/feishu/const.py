@@ -13,5 +13,5 @@ BITABLE_RECORD = "/open-apis/bitable/v1/apps/:app_token/tables/:table_id/records
 BATCH_RECORDS = "https://open.feishu.cn/open-apis/bitable/v1/apps/:app_token/tables/:table_id/records/batch_get"
 
 
-# 列出字段 https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-field/update
+# 列出,更新字段 https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-field/update
 TABLES_FIELDS = '/open-apis/bitable/v1/apps/:app_token/tables/:table_id/fields/:field_id'

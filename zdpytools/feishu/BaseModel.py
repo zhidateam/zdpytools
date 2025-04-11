@@ -128,6 +128,19 @@ class BaseModel:
         检查是否包含特定字段，没有则创建
         """
         origin_fileds = await self.feishu.get_tables_fields(self.app_token, self.table_id)
+        for key, value in fields.items():
+            if key not in origin_fileds:
+                #需要根据value来选择不同的type，property
+                req_body = {
+                    "field_name": key,
+                    "type": value.get("type"),
+                    "property": value.get("property", None)
+                }
+                try:
+                    await self.feishu.tables_fields(self.app_token, self.table_id, req_body=req_body)
+                    logger.info(f"Field '{key}' added successfully.")
+                except Exception as e:
+                    logger.error(f"Failed to add field '{key}': {e}")
     # 构造数据表返回元素
     def data_filed2dict(self, fields: dict[str, any], record_id: str) -> dict:
         pass
