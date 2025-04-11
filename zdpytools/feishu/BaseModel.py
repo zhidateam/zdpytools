@@ -112,6 +112,7 @@ class BaseModel:
         :param fields: 新增字段
         :return: 新增结果
         """
+        await self.check_fileds(fields)
         res = await self.feishu.update_bitable_record(self.app_token, self.table_id, fields=fields)
         return res
     async def update_record(self, record_id: str, fields: dict) -> dict:
@@ -121,6 +122,7 @@ class BaseModel:
         :param fields: 更新字段
         :return: 更新结果
         """
+        await self.check_fileds(fields)
         res = await self.feishu.update_bitable_record(self.app_token, self.table_id, record_id=record_id, fields=fields)
         return res
     async def check_fileds(self, fields: dict) -> None:
@@ -130,17 +132,17 @@ class BaseModel:
         origin_fileds = await self.feishu.get_tables_fields(self.app_token, self.table_id)
         for key, value in fields.items():
             if key not in origin_fileds:
-                #需要根据value来选择不同的type，property
+                #需要根据value来选择不同的type
+                #1：文本2：数字，暂时只支持这两种
                 req_body = {
                     "field_name": key,
-                    "type": value.get("type"),
-                    "property": value.get("property", None)
+                    "type": 1 if isinstance(value, str) else 2,
                 }
                 try:
                     await self.feishu.tables_fields(self.app_token, self.table_id, req_body=req_body)
-                    logger.info(f"Field '{key}' added successfully.")
+                    logger.debug(f"字段 '{key}'添加成功")
                 except Exception as e:
-                    logger.error(f"Failed to add field '{key}': {e}")
+                    logger.error(f"字段添加失败 '{key}': {e}")
     # 构造数据表返回元素
     def data_filed2dict(self, fields: dict[str, any], record_id: str) -> dict:
         pass
