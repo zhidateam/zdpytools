@@ -15,121 +15,20 @@ class BaseModel:
         self.feishu = Feishu(app_id, app_secret)
 
     async def get_all_records(self, filter: dict = {}):
-        """
-        查询所有记录
-        :param filter: 筛选条件
-        :return: 记录数据列表
-        """
-        page_token = ""
-        return_data = []
-        has_more = True
-
-        while has_more:
-            param = {'page_size': 500}
-            if page_token:
-                param['page_token'] = page_token
-
-            try:
-                res = await self.feishu.bitable_records_search(self.app_token, self.table_id, param=param,req_body=filter)
-                logger.debug(f"查询记录: {res}")
-            except Exception as e:
-                logger.error(f"查询记录失败: {str(e)}")
-                return return_data
-
-            page_token = res.get('page_token', "")
-            has_more = res.get('has_more', False)
-            items = res.get('items', [])
-
-            if not items:
-                return return_data
-
-            for item in items:
-                record_id = item.get('record_id')
-                fields = item.get('fields', {})
-                data = self.data_filed2dict(fields, record_id)
-                if data:
-                    return_data.append(data)
-
-        return return_data
-    async def get_records_by_record_ids(self, record_ids: list[str]) -> list[dict]:
-        """
-        根据record_id查询多条记录
-        :param record_ids: record_id列表
-        :return: 记录数据列表
-        """
-        res = await self.feishu.batch_get_records(self.app_token, self.table_id, record_ids)
-        records = res.get('records', [])
-        return_data = []
-        for record in records:
-            record_id = record.get('record_id')
-            fields = record.get('fields', {})
-            data = self.data_filed2dict(fields, record_id)
-            if data:
-                return_data.append(data)
-        return return_data
+        return await self.feishu.get_all_records(self.app_token, self.table_id, filter)
 
     async def get_record_by_record_id(self, record_id: str) -> dict:
-        """
-        根据record_id查询单条记录
-        :param record_id: record_id
-        :return: 记录数据字典
-        """
-        res = await self.feishu.bitable_record(self.app_token, self.table_id, record_id)
-        fields = res.get('record', {}).get('fields', {})
-        if not fields:
-            return {}
-        return self.data_filed2dict(fields, record_id)
-    async def get_records_by_key(self, filed_name: str, value: str) -> list[dict]:
-        """
-        根据关键字查询多条记录
-        :param filed_name: 关键字字段名
-        :param value: 关键字值
-        :return: 记录数据列表
-        """
-        condition = self.build_filter_condition(filed_name, "is", value)
-        filter = self.build_and_filter([condition])
-        res = await self.get_all_records(filter)
-        return res
-    async def get_record_by_key(self, filed_name: str, value: str) -> dict:
-        """
-        根据关键字查询单条记录
-        :param filed_name: 关键字字段名
-        :param value: 关键字值
-        :return: 记录数据字典
-        """
-        condition = self.build_filter_condition(filed_name, "is", value)
-        filter = self.build_and_filter([condition])
-        res = await self.feishu.bitable_records_search(self.app_token, self.table_id, req_body=filter)
-        items = res.get('items', [])
-        if not items:
-            return {}
-        record_id = items[0].get('record_id')
-        fields = items[0].get('fields', {})
-        return self.data_filed2dict(fields, record_id)
+        return await self.feishu.get_record_by_id(self.app_token, self.table_id, record_id)
+
+    async def get_records_by_key(self, field_name: str, value: str) -> list[dict]:
+        return await self.feishu.get_records_by_key(self.app_token, self.table_id, field_name, value)
+
     async def add_record(self, fields: dict) -> dict:
-        """
-        新增记录
-        :param fields: 新增字段
-        :return: 新增结果
-        """
         return await self.feishu.add_record(self.app_token, self.table_id, fields)
+
     async def update_record(self, record_id: str, fields: dict) -> dict:
-        """
-        更新记录
-        :param record_id: record_id
-        :param fields: 更新字段
-        :return: 更新结果
-        """
         return await self.feishu.update_record(self.app_token, self.table_id, record_id, fields)
-    # 构造数据表返回元素
-    def data_filed2dict(self, fields: dict[str, any], record_id: str) -> dict:
-        pass
-    # 通用字段转换
-    def filed2records(self, fileds: dict[str, any], key: str) -> list[str]:
-        value = fileds.get(key, {})
-        if "link_record_ids" in value:
-            return value.get("link_record_ids")
-        return []
+
 
     def filed2float(self, fileds: dict[str, any], key: str) -> float:
         value = fileds.get(key, [])

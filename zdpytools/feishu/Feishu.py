@@ -184,3 +184,77 @@ class Feishu(FeishuBase):
         except Exception as e:
             logger.error(f"克隆字段过程中发生错误: {e}\n{traceback.format_exc()}")
             return False
+    async def get_all_records(self, app_token: str, table_id: str, filter: dict = {}) -> list[dict]:
+        """
+        查询所有记录
+        :param app_token: 应用Token
+        :param table_id: 表格ID
+        :param filter: 筛选条件
+        :return: 记录数据列表
+        """
+        page_token = ""
+        return_data = []
+        has_more = True
+
+        while has_more:
+            param = {'page_size': 500}
+            if page_token:
+                param['page_token'] = page_token
+
+            try:
+                res = await self.bitable_records_search(app_token, table_id, param=param, req_body=filter)
+                logger.debug(f"查询记录: {res}")
+            except Exception as e:
+                logger.error(f"查询记录失败: {str(e)}")
+                return return_data
+
+            page_token = res.get('page_token', "")
+            has_more = res.get('has_more', False)
+            items = res.get('items', [])
+
+            if not items:
+                return return_data
+
+            for item in items:
+                record_id = item.get('record_id')
+                fields = item.get('fields', {})
+                return_data.append({'record_id': record_id, 'fields': fields})
+
+        return return_data
+
+    async def get_record_by_id(self, app_token: str, table_id: str, record_id: str) -> dict:
+        """
+        根据record_id查询单条记录
+        :param app_token: 应用Token
+        :param table_id: 表格ID
+        :param record_id: 记录ID
+        :return: 记录数据字典
+        """
+        try:
+            res = await self.bitable_record(app_token, table_id, record_id)
+            return res.get('record', {})
+        except Exception as e:
+            logger.error(f"查询记录失败: {str(e)}")
+            return {}
+
+    async def get_records_by_key(self, app_token: str, table_id: str, field_name: str, value: str) -> list[dict]:
+        """
+        根据关键字查询多条记录
+        :param app_token: 应用Token
+        :param table_id: 表格ID
+        :param field_name: 字段名
+        :param value: 字段值
+        :return: 记录数据列表
+        """
+        condition = {
+            "field_name": field_name,
+            "operator": "is",
+            "value": [value]
+        }
+        filter = {
+            "filter": {
+                "conjunction": "and",
+                "conditions": [condition]
+            }
+        }
+        return await self.get_all_records(app_token, table_id, filter)
