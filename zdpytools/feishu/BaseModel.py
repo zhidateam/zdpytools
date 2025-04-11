@@ -128,6 +128,7 @@ class BaseModel:
     async def check_fileds(self, fields: dict) -> None:
         """
         检查是否包含特定字段，没有则创建
+        :param fields: 更新字段
         """
         origin_fileds = await self.feishu.get_tables_fields(self.app_token, self.table_id)
         for key, value in fields.items():
