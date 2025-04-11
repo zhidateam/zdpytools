@@ -7,14 +7,14 @@ from ..utils.log import logger
 
 #飞书模型基类
 class BaseModel:
-    def __init__(self, app_id, app_secret, app_token, table_id):
-        self.app_id = app_id
-        self.app_secret = app_secret
-        self.app_token = app_token
-        self.table_id = table_id
+    def __init__(self, app_id: str, app_secret: str, app_token: str, table_id: str):
+        self.app_id: str = app_id
+        self.app_secret: str = app_secret
+        self.app_token: str = app_token
+        self.table_id: str = table_id
         self.feishu = Feishu(app_id, app_secret)
 
-    async def get_all_records(self,filter:dict={}):
+    async def get_all_records(self, filter: dict = {}):
         """
         查询所有记录
         :param filter: 筛选条件
@@ -51,7 +51,7 @@ class BaseModel:
                     return_data.append(data)
 
         return return_data
-    async def get_records_by_record_ids(self, record_ids: list):
+    async def get_records_by_record_ids(self, record_ids: list[str]) -> list[dict]:
         """
         根据record_id查询多条记录
         :param record_ids: record_id列表
@@ -68,7 +68,7 @@ class BaseModel:
                 return_data.append(data)
         return return_data
 
-    async def get_record_by_record_id(self, record_id):
+    async def get_record_by_record_id(self, record_id: str) -> dict:
         """
         根据record_id查询单条记录
         :param record_id: record_id
@@ -79,7 +79,7 @@ class BaseModel:
         if not fields:
             return {}
         return self.data_filed2dict(fields, record_id)
-    async def get_records_by_key(self, filed_name, value):
+    async def get_records_by_key(self, filed_name: str, value: str) -> list[dict]:
         """
         根据关键字查询多条记录
         :param filed_name: 关键字字段名
@@ -90,7 +90,7 @@ class BaseModel:
         filter = self.build_and_filter([condition])
         res = await self.get_all_records(filter)
         return res
-    async def get_record_by_key(self, filed_name, value):
+    async def get_record_by_key(self, filed_name: str, value: str) -> dict:
         """
         根据关键字查询单条记录
         :param filed_name: 关键字字段名
@@ -106,7 +106,7 @@ class BaseModel:
         record_id = items[0].get('record_id')
         fields = items[0].get('fields', {})
         return self.data_filed2dict(fields, record_id)
-    async def add_record(self, fields):
+    async def add_record(self, fields: dict) -> dict:
         """
         新增记录
         :param fields: 新增字段
@@ -114,7 +114,7 @@ class BaseModel:
         """
         res = await self.feishu.update_bitable_record(self.app_token, self.table_id, fields=fields)
         return res
-    async def update_record(self, record_id, fields):
+    async def update_record(self, record_id: str, fields: dict) -> dict:
         """
         更新记录
         :param record_id: record_id
@@ -123,23 +123,28 @@ class BaseModel:
         """
         res = await self.feishu.update_bitable_record(self.app_token, self.table_id, record_id=record_id, fields=fields)
         return res
+    async def check_fileds(self, fields: dict) -> None:
+        """
+        检查是否包含特定字段，没有则创建
+        """
+        origin_fileds = await self.feishu.get_tables_fields(self.app_token, self.table_id)
     # 构造数据表返回元素
-    def data_filed2dict(self, fields: dict, record_id: str) -> dict:
+    def data_filed2dict(self, fields: dict[str, any], record_id: str) -> dict:
         pass
     # 通用字段转换
-    def filed2records(self, fileds: dict, key: str) -> list:
+    def filed2records(self, fileds: dict[str, any], key: str) -> list[str]:
         value = fileds.get(key, {})
         if "link_record_ids" in value:
             return value.get("link_record_ids")
         return []
 
-    def filed2float(self, fileds: dict, key: str) -> float:
+    def filed2float(self, fileds: dict[str, any], key: str) -> float:
         value = fileds.get(key, [])
         if isinstance(value, (int, float)):
             return float(value)
         return 1
 
-    def filed2text(self, fileds: dict, key: str) -> str:
+    def filed2text(self, fileds: dict[str, any], key: str) -> str:
         res = ""
         value = fileds.get(key, [])
         # 处理嵌套value类型（如url）
@@ -166,21 +171,21 @@ class BaseModel:
                 res = f"{res}{str(item)}"
         return res
 
-    def filed_json2list(self, fileds: dict, key: str) -> list:
+    def filed_json2list(self, fileds: dict[str, any], key: str) -> list[any]:
         json_data = self.filed2text(fileds, key)
         try:
             return json.loads(json_data)
         except:
             return []
 
-    def filed_yml2list(self, fileds: dict, key: str) -> list:
+    def filed_yml2list(self, fileds: dict[str, any], key: str) -> list[any]:
         yml_data = self.filed2text(fileds, key)
         try:
             return yaml.safe_load(yml_data)
         except:
             return []
 
-    def filed_yml2dict(self, fileds: dict, key: str) -> dict:
+    def filed_yml2dict(self, fileds: dict[str, any], key: str) -> dict:
         yml_data = self.filed2text(fileds, key)
         try:
             return yaml.safe_load(yml_data)
@@ -188,14 +193,14 @@ class BaseModel:
             return {}
 
     #构造条件筛选
-    def build_condition(self, condition: dict) -> dict:
+    def build_condition(self, condition: dict[str, str]) -> str:
         condition_list = []
         for key, value in condition.items():
             condition_list.append(f"{key} = '{value}'")
         return " and ".join(condition_list)
 
     # 构造飞书多维表格筛选条件
-    def build_filter_condition(self, field_name: str, operator: str, value) -> dict:
+    def build_filter_condition(self, field_name: str, operator: str, value: any) -> dict:
         """
         构造单个筛选条件
 
@@ -222,7 +227,7 @@ class BaseModel:
             "value": value
         }
 
-    def build_and_filter(self, conditions: list) -> dict:
+    def build_and_filter(self, conditions: list[dict]) -> dict:
         """
         构造AND筛选条件
 
@@ -239,7 +244,7 @@ class BaseModel:
             }
         }
 
-    def build_or_filter(self, conditions: list) -> dict:
+    def build_or_filter(self, conditions: list[dict]) -> dict:
         """
         构造OR筛选条件
 
@@ -256,7 +261,7 @@ class BaseModel:
             }
         }
 
-    def build_complex_filter(self, children: list, conjunction: str = "and") -> dict:
+    def build_complex_filter(self, children: list[dict], conjunction: str = "and") -> dict:
         """
         构造复杂筛选条件，支持嵌套的AND/OR逻辑
 

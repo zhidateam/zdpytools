@@ -11,7 +11,7 @@ import os
 # 本文件仅实现飞书原版接口调用，不进行进一步封装
 
 class FeishuBase:
-    def __init__(self, app_id=os.getenv("FEISHU_APP_ID"), app_secret=os.getenv("FEISHU_APP_SECRET"), print_feishu_log=True):
+    def __init__(self, app_id: str = os.getenv("FEISHU_APP_ID"), app_secret: str = os.getenv("FEISHU_APP_SECRET"), print_feishu_log: bool = True):
         print(app_id, app_secret)
         if not app_id or not app_secret:
             raise ValueError("app_id 或 app_secret 为空")
@@ -22,14 +22,14 @@ class FeishuBase:
         self._token_expire_time = 0  # 记录token过期时间
         self.client = httpx.AsyncClient(timeout=10.0)
 
-    def _is_token_expired(self):
+    def _is_token_expired(self) -> bool:
         """
         检查当前 token 是否过期
         """
         # 提前5分钟刷新 token，避免正好在过期边缘
         return time.time() >= (self._token_expire_time - 300)
 
-    async def _authorize_tenant_access_token(self):
+    async def _authorize_tenant_access_token(self) -> None:
         """
         使用 httpx 异步请求获取 tenant_access_token
         """
@@ -52,14 +52,14 @@ class FeishuBase:
             logger.error(f"解析 token 响应失败: {e}")
             raise LarkException(code=-1, msg="响应解析失败", url=url, req_body=req_body, headers=headers)
 
-    async def _authorize_tenant_access_token_if_needed(self):
+    async def _authorize_tenant_access_token_if_needed(self) -> None:
         """
         如果没有 token 或 token 已过期，则获取新 token
         """
         if not self._tenant_access_token or self._is_token_expired():
             await self._authorize_tenant_access_token()
 
-    async def req_feishu_api(self, method, url, req_body=None, check_code=True, check_status=True):
+    async def req_feishu_api(self, method: str, url: str, req_body: dict = None, check_code: bool = True, check_status: bool = True) -> dict:
         """
         发起飞书 API 异步请求
         """
@@ -103,7 +103,7 @@ class FeishuBase:
             logger.error(f"解析响应 JSON 失败: {e}, URL: {url}")
             raise LarkException(code=-1, msg="响应解析失败", url=url, req_body=req_body, headers=headers)
 
-    async def bitable_records_search(self, app_token, table_id, param={}, req_body={}, **kwargs):
+    async def bitable_records_search(self, app_token: str, table_id: str, param: dict = {}, req_body: dict = {}, **kwargs) -> dict:
         """
         根据条件查询多维表格记录
         """
@@ -114,7 +114,7 @@ class FeishuBase:
         resp = await self.req_feishu_api("POST", url=url, req_body=req_body)
         return resp.get("data")
 
-    async def bitable_record(self, app_token, table_id, record_id, **kwargs):
+    async def bitable_record(self, app_token: str, table_id: str, record_id: str, **kwargs) -> dict:
         """
         根据 record_id 查询单条记录
         """
@@ -123,7 +123,7 @@ class FeishuBase:
         resp = await self.req_feishu_api("GET", url=url)
         return resp.get("data")
 
-    async def batch_get_records(self, app_token, table_id, record_ids, **kwargs):
+    async def batch_get_records(self, app_token: str, table_id: str, record_ids: list[str], **kwargs) -> dict:
         """
         批量获取多维表格记录
         """
@@ -133,7 +133,7 @@ class FeishuBase:
         resp = await self.req_feishu_api("POST", url=url, req_body=req_body)
         return resp.get("data")
 
-    async def update_bitable_record(self, app_token, table_id, fields={}, record_id=None, **kwargs):
+    async def update_bitable_record(self, app_token: str, table_id: str, fields: dict = {}, record_id: str = None, **kwargs) -> dict:
         """
         更新或新增多维表格记录
         """
@@ -147,14 +147,14 @@ class FeishuBase:
         resp = await self.req_feishu_api(method, url=url, req_body=data)
         return resp.get("data")
 
-    async def close(self):
+    async def close(self) -> None:
         """
         关闭异步客户端
         """
         if self.client:
             await self.client.aclose()
 
-    async def tables_fields(self, app_token, table_id, query_params=None, field_id="", req_body=None):
+    async def tables_fields(self, app_token: str, table_id: str, query_params: dict = None, field_id: str = "", req_body: dict = None) -> dict:
         self.__dict__.update(locals())
         url = "{}{}".format(
             FEISHU_HOST, TABLES_FIELDS
