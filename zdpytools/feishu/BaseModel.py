@@ -17,8 +17,14 @@ class BaseModel:
     async def get_all_records(self, filter: dict = {}):
         return await self.feishu.get_all_records(self.app_token, self.table_id, filter)
 
+    async def get_records_by_record_ids(self, record_ids: list[str]) -> list[dict]:
+        return await self.feishu.get_records_by_record_ids(self.app_token, self.table_id, record_ids)
+
     async def get_record_by_record_id(self, record_id: str) -> dict:
         return await self.feishu.get_record_by_id(self.app_token, self.table_id, record_id)
+
+    async def get_record_by_key(self, field_name: str, value: str) -> dict:
+        return await self.feishu.get_record_by_key(self.app_token, self.table_id, field_name, value)
 
     async def get_records_by_key(self, field_name: str, value: str) -> list[dict]:
         return await self.feishu.get_records_by_key(self.app_token, self.table_id, field_name, value)
@@ -28,6 +34,7 @@ class BaseModel:
 
     async def update_record(self, record_id: str, fields: dict) -> dict:
         return await self.feishu.update_record(self.app_token, self.table_id, record_id, fields)
+
 
 
     def filed2float(self, fileds: dict[str, any], key: str) -> float:

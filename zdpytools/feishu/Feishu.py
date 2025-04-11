@@ -258,3 +258,47 @@ class Feishu(FeishuBase):
             }
         }
         return await self.get_all_records(app_token, table_id, filter)
+    async def get_records_by_record_ids(self, app_token: str, table_id: str, record_ids: list[str]) -> list[dict]:
+        """
+        根据record_id查询多条记录
+        :param app_token: 应用Token
+        :param table_id: 表格ID
+        :param record_ids: record_id列表
+        :return: 记录数据列表
+        """
+        res = await self.batch_get_records(app_token, table_id, record_ids)
+        records = res.get('records', [])
+        return_data = []
+        for record in records:
+            record_id = record.get('record_id')
+            fields = record.get('fields', {})
+            return_data.append({'record_id': record_id, 'fields': fields})
+        return return_data
+
+    async def get_record_by_key(self, app_token: str, table_id: str, field_name: str, value: str) -> dict:
+        """
+        根据关键字查询单条记录
+        :param app_token: 应用Token
+        :param table_id: 表格ID
+        :param field_name: 关键字字段名
+        :param value: 关键字值
+        :return: 记录数据字典
+        """
+        condition = {
+            "field_name": field_name,
+            "operator": "is",
+            "value": [value]
+        }
+        filter = {
+            "filter": {
+                "conjunction": "and",
+                "conditions": [condition]
+            }
+        }
+        res = await self.bitable_records_search(app_token, table_id, req_body=filter)
+        items = res.get('items', [])
+        if not items:
+            return {}
+        record_id = items[0].get('record_id')
+        fields = items[0].get('fields', {})
+        return {'record_id': record_id, 'fields': fields}
