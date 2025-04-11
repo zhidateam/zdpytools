@@ -21,6 +21,51 @@ class Feishu(FeishuBase):
         :param print_feishu_log: 是否打印飞书API日志
         """
         super().__init__(app_id, app_secret, print_feishu_log)
+    async def add_record(self, app_token: str, table_id: str, fields: dict) -> dict:
+        """
+        新增记录
+        :param app_token: 应用Token
+        :param table_id: 表格ID
+        :param fields: 新增字段
+        :return: 新增结果
+        """
+        await self.check_fileds(app_token, table_id, fields)
+        res = await self.update_bitable_record(app_token, table_id, fields=fields)
+        return res
+
+    async def update_record(self, app_token: str, table_id: str, record_id: str, fields: dict) -> dict:
+        """
+        更新记录
+        :param app_token: 应用Token
+        :param table_id: 表格ID
+        :param record_id: 记录ID
+        :param fields: 更新字段
+        :return: 更新结果
+        """
+        await self.check_fileds(app_token, table_id, fields)
+        res = await self.update_bitable_record(app_token, table_id, record_id=record_id, fields=fields)
+        return res
+
+    async def check_fileds(self, app_token: str, table_id: str, fields: dict) -> None:
+        """
+        检查是否包含特定字段，没有则创建
+        :param app_token: 应用Token
+        :param table_id: 表格ID
+        :param fields: 更新字段
+        """
+        origin_fileds = await self.get_tables_fields(app_token, table_id)
+        for key, value in fields.items():
+            if key not in origin_fileds:
+                # 根据value选择不同的type
+                req_body = {
+                    "field_name": key,
+                    "type": 1 if isinstance(value, str) else 2,
+                }
+                try:
+                    await self.tables_fields(app_token, table_id, req_body=req_body)
+                    logger.debug(f"字段 '{key}' 添加成功")
+                except Exception as e:
+                    logger.error(f"字段添加失败 '{key}': {e}")
 
 
     async def get_tables_fields(self, app_token: str, table_id: str) -> dict:
