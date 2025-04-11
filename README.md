@@ -83,6 +83,14 @@ asyncio.run(example())
 ```python
     version="xxx",
 ```
+
+修改__init__.py中的版本
+```python
+__version__ = "0.1.1"
+```
+
+
+
 运行构建脚本
 ```bash
 python build_package.py

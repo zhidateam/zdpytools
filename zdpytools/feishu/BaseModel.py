@@ -106,6 +106,14 @@ class BaseModel:
         record_id = items[0].get('record_id')
         fields = items[0].get('fields', {})
         return self.data_filed2dict(fields, record_id)
+    async def add_record(self, fields):
+        """
+        新增记录
+        :param fields: 新增字段
+        :return: 新增结果
+        """
+        res = await self.feishu.update_bitable_record(self.app_token, self.table_id, fields=fields)
+        return res
     async def update_record(self, record_id, fields):
         """
         更新记录
