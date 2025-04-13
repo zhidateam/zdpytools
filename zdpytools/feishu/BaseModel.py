@@ -19,26 +19,26 @@ class BaseModel:
     # 根据record_id查询单条记录
     async def get_record_by_record_id(self, record_id: str) -> dict:
         record = await self.feishu.get_record_by_id(self.app_token, self.table_id, record_id)
-        res = self.data_filed2dict(record.get('field'), record.get('record_id'))
+        res = self.data_filed2dict(record.get('fields'), record.get('record_id'))
         return res
     #根据record_id列表查询多条记录
     async def get_records_by_record_ids(self, record_ids: list[str]) -> list[dict]:
         res = []
         records = await self.feishu.get_records_by_record_ids(self.app_token, self.table_id, record_ids)
         for record in records:
-            res.append(self.data_filed2dict(record.get('field'), record.get('record_id')))
+            res.append(self.data_filed2dict(record.get('fields'), record.get('record_id')))
         return res
     # 根据关键字查询单条记录
     async def get_record_by_key(self, field_name: str, value: str) -> dict:
         record = await self.feishu.get_record_by_key(self.app_token, self.table_id, field_name, value)
-        res = self.data_filed2dict(record.get('field'), record.get('record_id'))
+        res = self.data_filed2dict(record.get('fields'), record.get('record_id'))
         return res
     # 根据关键字查询多条记录，返回列表
     async def get_records_by_key(self, field_name: str, value: str) -> list[dict]:
         res = []
         records = await self.feishu.get_records_by_key(self.app_token, self.table_id, field_name, value)
         for record in records:
-            res.append(self.data_filed2dict(record.get('field'), record.get('record_id')))
+            res.append(self.data_filed2dict(record.get('fields'), record.get('record_id')))
         return res
     # 添加记录
     async def add_record(self, fields: dict) -> dict:
