@@ -1,5 +1,6 @@
 # 本地测试
 localtest/
+.pypirc
 # 编译文件
 __pycache__/
 *.py[cod]
