@@ -60,9 +60,7 @@ class Feishu(FeishuBase):
                 field_type = 1  # 默认为文本类型
 
                 # 判断是否为日期类型
-                if (isinstance(value, int) and len(str(value)) == 13) or \
-                   (isinstance(value, str) and (value.startswith("20") or value == "[NOW]")) or \
-                   "时间" in key or "日期" in key:
+                if "时间" in key or "日期" in key:
                     field_type = 5  # 日期类型
                 elif isinstance(value, (int, float)):
                     field_type = 2  # 数字类型
