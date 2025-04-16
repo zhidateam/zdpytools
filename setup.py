@@ -8,7 +8,7 @@ setup(
     version="0.1.7",
     author="zhidateam",
     author_email="zhidateam@163.com",
-    description="Python工具集，包含飞书API和日志工具",
+    description="Python工具集，包含飞书API、AutoDL API和日志工具",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/zhidateam/zdpytools",

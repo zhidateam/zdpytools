@@ -1,11 +1,12 @@
 # zdpytools
 
-Python工具集，提供日志和飞书API集成功能。
+Python工具集，提供日志、飞书API和AutoDL API集成功能。
 
 ## 功能
 
 - **日志工具**：基于loguru的简单易用的日志模块
 - **飞书API**：飞书开放平台API的封装，支持多维表格操作
+- **AutoDL API**：基于httpx的AutoDL弹性部署API异步封装
 
 ## 安装
 
@@ -38,6 +39,33 @@ async def example():
         print(result)
     finally:
         await fs.close()
+
+asyncio.run(example())
+```
+
+### AutoDL API
+
+```python
+import asyncio
+from zdpytools.autodl import AutoDLClient
+from zdpytools.utils.log import logger
+
+async def example():
+    # 可以直接传入token或者设置环境变量 AUTODL_TOKEN
+    async with AutoDLClient() as client:
+        try:
+            # 获取GPU库存
+            gpu_stock = await client.get_gpu_stock(
+                region_sign="westDC2",
+                cuda_v_from=117,
+                cuda_v_to=128
+            )
+
+            for gpu_info in gpu_stock:
+                for gpu_name, stock in gpu_info.items():
+                    logger.info(f"GPU型号: {gpu_name}, 空闲数量: {stock.get('idle_gpu_num')}")
+        except Exception as e:
+            logger.error(f"获取GPU库存失败: {e}")
 
 asyncio.run(example())
 ```
