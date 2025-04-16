@@ -57,9 +57,19 @@ class Feishu(FeishuBase):
         for key, value in fields.items():
             if key not in origin_fileds:
                 # 根据value选择不同的type
+                field_type = 1  # 默认为文本类型
+
+                # 判断是否为日期类型
+                if (isinstance(value, int) and len(str(value)) == 13) or \
+                   (isinstance(value, str) and (value.startswith("20") or value == "[NOW]")) or \
+                   "时间" in key or "日期" in key:
+                    field_type = 5  # 日期类型
+                elif isinstance(value, (int, float)):
+                    field_type = 2  # 数字类型
+
                 req_body = {
                     "field_name": key,
-                    "type": 1 if isinstance(value, str) else 2,
+                    "type": field_type,
                 }
                 try:
                     await self.tables_fields(app_token, table_id, req_body=req_body)
