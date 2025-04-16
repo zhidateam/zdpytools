@@ -55,6 +55,9 @@ class BaseModel:
     async def update_record(self, record_id: str, fields: dict) -> dict:
         return await self.feishu.update_record(self.app_token, self.table_id, record_id, fields)
 
+    # 查询字段
+    async def get_tables_fields(self) -> dict:
+        return await self.feishu.get_tables_fields(self.app_token, self.table_id)
     # 给下面继承实现
     def data_filed2dict(self, fileds: dict[str, any], record_id: str) -> dict:
         pass

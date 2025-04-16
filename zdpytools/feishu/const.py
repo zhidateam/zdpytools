@@ -3,6 +3,7 @@ FEISHU_HOST = "https://open.feishu.cn"
 
 
 TENANT_ACCESS_TOKEN_URI = "/open-apis/auth/v3/tenant_access_token/internal"
+# 新增记录https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/create
 BITABLE_RECORDS = "/open-apis/bitable/v1/apps/:app_token/tables/:table_id/records"
 
 # 查询记录文档：https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/bitable-v1/app-table-record/search

@@ -8,6 +8,7 @@ import httpx
 import json
 import time
 import os
+import datetime
 
 
 # 本文件实现一些拓展接口，方便使用
@@ -26,7 +27,7 @@ class Feishu(FeishuBase):
         新增记录
         :param app_token: 应用Token
         :param table_id: 表格ID
-        :param fields: 新增字段
+        :param fields: 新记录的字段,key为字段名，value为字段值
         :return: 新增结果
         """
         await self.check_fileds(app_token, table_id, fields)
@@ -39,7 +40,7 @@ class Feishu(FeishuBase):
         :param app_token: 应用Token
         :param table_id: 表格ID
         :param record_id: 记录ID
-        :param fields: 更新字段
+        :param fields: 更新记录的字段,key为字段名，value为字段值
         :return: 更新结果
         """
         await self.check_fileds(app_token, table_id, fields)
@@ -49,12 +50,14 @@ class Feishu(FeishuBase):
     async def check_fileds(self, app_token: str, table_id: str, fields: dict) -> None:
         """
         检查是否包含特定字段，没有则创建
+        兼容字段类型，目前只有时间会去兼容
         :param app_token: 应用Token
         :param table_id: 表格ID
         :param fields: 更新字段
         """
         origin_fileds = await self.get_tables_fields(app_token, table_id)
         for key, value in fields.items():
+            # 不存在字段，创建
             if key not in origin_fileds:
                 # 根据value选择不同的type
                 field_type = 1  # 默认为文本类型
@@ -74,6 +77,26 @@ class Feishu(FeishuBase):
                     logger.debug(f"字段 '{key}' 添加成功")
                 except Exception as e:
                     logger.error(f"字段添加失败 '{key}': {e}")
+            else:
+                origin_filed = origin_fileds[key]
+                #存在字段，开始兼容
+                type = origin_filed.get('type')
+                #日期，填写毫秒级时间戳
+                if type == 5:
+                    # 判断输入类型
+                    if isinstance(value, (int, float)):
+                        # 将秒数转换为毫秒数，判断范围；大约是 2001 年 9 月 9 日的毫秒级时间戳。
+                        if value < 1000000000000:
+                            value = int(value * 1000)
+                    elif isinstance(value, str):
+                        # 将字符串转换为时间戳，判断范围
+                        try:
+                            value = int(time.mktime(time.strptime(value, "%Y-%m-%d %H:%M:%S")) * 1000)
+                        except ValueError:
+                            pass
+                    elif isinstance(value, datetime.datetime):
+                        value = int(value.timestamp() * 1000)
+                    fields[key] = value
 
 
     async def get_tables_fields(self, app_token: str, table_id: str) -> dict:
