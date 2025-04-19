@@ -1,5 +1,5 @@
 import yaml
-
+import inspect
 from datetime import datetime
 import json
 from .Feishu import Feishu
@@ -7,12 +7,13 @@ from ..utils.log import logger
 
 #飞书模型基类
 class BaseModel:
-    def __init__(self, app_id: str, app_secret: str, app_token: str, table_id: str):
+    def __init__(self, app_id: str, app_secret: str, app_token: str, table_id: str,async_get_fileds: bool = True):
         self.app_id: str = app_id
         self.app_secret: str = app_secret
         self.app_token: str = app_token
         self.table_id: str = table_id
-        self.feishu = Feishu(app_id, app_secret)
+        self.feishu: Feishu = Feishu(app_id, app_secret)
+        self.async_get_fileds:bool = async_get_fileds
     #查询所有记录
     async def get_all_records(self, filter: dict = {}):
         return await self.feishu.get_all_records(self.app_token, self.table_id, filter)
@@ -21,7 +22,7 @@ class BaseModel:
         record = await self.feishu.get_record_by_id(self.app_token, self.table_id, record_id)
         if not record or record == {}:
             return {}
-        res = self.data_filed2dict(record.get('fields'), record.get('record_id'))
+        res = await self.auto_data_filed2dict(record.get('fields'), record.get('record_id'))
         return res
     #根据record_id列表查询多条记录
     async def get_records_by_record_ids(self, record_ids: list[str]) -> list[dict]:
@@ -30,14 +31,14 @@ class BaseModel:
         for record in records:
             if not record or record == {}:
                 continue
-            res.append(self.data_filed2dict(record.get('fields'), record.get('record_id')))
+            res.append(await self.auto_data_filed2dict(record.get('fields'), record.get('record_id')))
         return res
     # 根据关键字查询单条记录
     async def get_record_by_key(self, field_name: str, value: str) -> dict:
         record = await self.feishu.get_record_by_key(self.app_token, self.table_id, field_name, value)
         if not record or record == {}:
             return {}
-        res = self.data_filed2dict(record.get('fields'), record.get('record_id'))
+        res = await self.auto_data_filed2dict(record.get('fields'), record.get('record_id'))
         return res
     # 根据关键字查询多条记录，返回列表
     async def get_records_by_key(self, field_name: str, value: str) -> list[dict]:
@@ -46,7 +47,7 @@ class BaseModel:
         for record in records:
             if not record or record == {}:
                 continue
-            res.append(self.data_filed2dict(record.get('fields'), record.get('record_id')))
+            res.append(await self.auto_data_filed2dict(record.get('fields'), record.get('record_id')))
         return res
     # 添加记录
     async def add_record(self, fields: dict) -> dict:
@@ -58,9 +59,35 @@ class BaseModel:
     # 查询字段
     async def get_tables_fields(self) -> dict:
         return await self.feishu.get_tables_fields(self.app_token, self.table_id)
-    # 给下面继承实现
+    # 自动判断使用同步还是异步版本的data_filed2dict
+    async def auto_data_filed2dict(self, fileds: dict[str, any], record_id: str) -> dict:
+        """
+        自动判断使用同步还是异步版本的data_filed2dict
+        如果子类实现了异步版本，则使用异步版本；否则使用同步版本
+        """
+        if self.async_get_fileds:
+            #使用异步版本
+            return await self.async_data_filed2dict(fileds, record_id)
+        else:
+            # 使用同步版本
+            return self.data_filed2dict(fileds, record_id)
+
+    # --------------给下面继承实现-----------------
     def data_filed2dict(self, fileds: dict[str, any], record_id: str) -> dict:
-        pass
+        """
+        同步版本，用于同步获取字段值
+        子类应该实现此方法以处理不需要异步操作的字段
+        """
+        return {'record_id': record_id}
+
+    async def async_data_filed2dict(self, fileds: dict[str, any], record_id: str) -> dict:
+        """
+        异步版本，用于异步获取字段值
+        子类应该实现此方法以处理需要异步操作的字段，如下载链接等
+        """
+        return {'record_id': record_id}
+
+    #-----------下面为字段转化方法--------------------
     def filed2float(self, fileds: dict[str, any], key: str) -> float:
         value = fileds.get(key, [])
         if isinstance(value, (int, float)):
@@ -114,6 +141,23 @@ class BaseModel:
             return yaml.safe_load(yml_data)
         except:
             return {}
+
+    async def filed2download_urls(self, fileds: dict[str, any], key: str, table_id:str) -> list[str]:
+        """
+        value例子：[{'file_token': 'X79qbILJwozCPHxmQtVcaeBUnAc', 'name': 'image.png', 'size': 1669629, 'tmp_url': 'https://open.feishu.cn/open-apis/drive/v1/medias/batch_get_tmp_download_url?file_tokens=X79qbILJwozCPHxmQtVcaeBUnAc&extra=%7B%22bitablePerm%22%3A%7B%22tableId%22%3A%22tbl2sZepp03XykVV%22%2C%22rev%22%3A5%7D%7D', 'type': 'image/png', 'url': 'https://open.feishu.cn/open-apis/drive/v1/medias/X79qbILJwozCPHxmQtVcaeBUnAc/download?extra=%7B%22bitablePerm%22%3A%7B%22tableId%22%3A%22tbl2sZepp03XykVV%22%2C%22rev%22%3A5%7D%7D'}],
+        """
+        value = fileds.get(key, [])
+        if not value:
+            return []
+        res = []
+        #rev暂时不知道作用
+        extra = {"bitablePerm":{"tableId":table_id,"rev":5}}
+        file_tokens = [item.get('file_token') for item in value]
+        resp = await self.feishu.batch_get_tmp_download_url(file_tokens, extra)
+
+        for item in resp.get('tmp_download_urls', []):
+            res.append(item.get('tmp_download_url'))
+        return res
 
     #构造条件筛选
     def build_condition(self, condition: dict[str, str]) -> str:

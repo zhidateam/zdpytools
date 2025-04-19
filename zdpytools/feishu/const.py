@@ -16,3 +16,6 @@ BATCH_RECORDS = "https://open.feishu.cn/open-apis/bitable/v1/apps/:app_token/tab
 
 # 列出,更新字段 https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-field/update
 TABLES_FIELDS = '/open-apis/bitable/v1/apps/:app_token/tables/:table_id/fields/:field_id'
+
+# 获取素材临时下载链接 https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/drive-v1/media/batch_get_tmp_download_url
+BATCH_GET_TMP_DOWNLOAD_URL = '/open-apis/drive/v1/medias/batch_get_tmp_download_url'
