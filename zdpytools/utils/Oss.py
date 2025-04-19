@@ -6,6 +6,9 @@ import traceback
 from pathlib import Path
 import asyncio
 from typing import Any, Dict, Optional, Union, List
+import tempfile
+import os
+import httpx
 
 
 class Oss:
@@ -63,6 +66,121 @@ class Oss:
         self.auth = oss2.Auth(self.access_key, self.access_secret)
         self.bucket = oss2.Bucket(self.auth, self.endpoint, self.bucket_name)
         self.root_path = default_config.get("root_path", "")
+
+    def upload_file_from_url(self, url: str, oss_file_path: Optional[str] = None) -> str:
+        """
+        从URL下载文件并上传到OSS，使用流式传输以节省内存
+
+        Args:
+            url: 需要下载的文件URL
+            oss_file_path: OSS中的目标路径，如'images/file.jpg'。
+                          如果不提供，将从URL或响应头中获取文件名
+
+        Returns:
+            str: 上传成功返回OSS文件的完整URL路径，失败返回空字符串
+
+        Example:
+            >>> oss = Oss(config)
+            >>> url = oss.upload_file_from_url('https://example.com/file.jpg')
+            >>> print(url)
+            'https://bucket-name.oss-cn-hangzhou.aliyuncs.com/images/file.jpg'
+        """
+        try:
+            with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+                with httpx.stream('GET', url) as response:
+                    response.raise_for_status()
+
+                    # 如果没有提供oss_file_path，尝试从URL或header获取文件名
+                    if not oss_file_path:
+                        # 先尝试从Content-Disposition获取文件名
+                        content_disposition = response.headers.get('content-disposition')
+                        if content_disposition and 'filename=' in content_disposition:
+                            filename = content_disposition.split('filename=')[-1].strip('"\'')
+                        else:
+                            # 如果没有Content-Disposition，从URL路径获取文件名
+                            filename = os.path.basename(urllib.parse.urlparse(url).path)
+                            if not filename:
+                                filename = 'downloaded_file'
+                        oss_file_path = filename
+
+                    # 流式下载文件
+                    for chunk in response.iter_bytes(chunk_size=8192):
+                        if chunk:
+                            tmp_file.write(chunk)
+
+                # 确保数据写入磁盘
+                tmp_file.flush()
+                os.fsync(tmp_file.fileno())
+
+                # 上传文件到OSS
+                try:
+                    return self.upload_file(tmp_file.name, oss_file_path)
+                finally:
+                    # 删除临时文件
+                    os.unlink(tmp_file.name)
+
+        except Exception as e:
+            errmsg = f"{e}\n{traceback.format_exc()}"
+            logger.error(f"从URL上传文件到OSS失败: {errmsg}")
+            return ""
+
+    async def upload_file_from_url_async(self, url: str, oss_file_path: Optional[str] = None) -> str:
+        """
+        异步从URL下载文件并上传到OSS，使用流式传输以节省内存
+
+        Args:
+            url: 需要下载的文件URL
+            oss_file_path: OSS中的目标路径，如'images/file.jpg'。
+                          如果不提供，将从URL或响应头中获取文件名
+
+        Returns:
+            str: 上传成功返回OSS文件的完整URL路径，失败返回空字符串
+
+        Example:
+            >>> oss = Oss(config)
+            >>> url = await oss.upload_file_from_url_async('https://example.com/file.jpg')
+            >>> print(url)
+            'https://bucket-name.oss-cn-hangzhou.aliyuncs.com/images/file.jpg'
+        """
+        try:
+            async with httpx.AsyncClient() as client:
+                async with client.stream('GET', url) as response:
+                    response.raise_for_status()
+
+                    # 如果没有提供oss_file_path，尝试从URL或header获取文件名
+                    if not oss_file_path:
+                        # 先尝试从Content-Disposition获取文件名
+                        content_disposition = response.headers.get('content-disposition')
+                        if content_disposition and 'filename=' in content_disposition:
+                            filename = content_disposition.split('filename=')[-1].strip('"\'')
+                        else:
+                            # 如果没有Content-Disposition，从URL路径获取文件名
+                            filename = os.path.basename(urllib.parse.urlparse(url).path)
+                            if not filename:
+                                filename = 'downloaded_file'
+                        oss_file_path = filename
+
+                    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+                        # 流式下载文件
+                        async for chunk in response.aiter_bytes(chunk_size=8192):
+                            if chunk:
+                                tmp_file.write(chunk)
+
+                        # 确保数据写入磁盘
+                        tmp_file.flush()
+                        os.fsync(tmp_file.fileno())
+
+                        # 上传文件到OSS
+                        try:
+                            return await self.upload_file_async(tmp_file.name, oss_file_path)
+                        finally:
+                            # 删除临时文件
+                            os.unlink(tmp_file.name)
+
+        except Exception as e:
+            errmsg = f"{e}\n{traceback.format_exc()}"
+            logger.error(f"异步从URL上传文件到OSS失败: {errmsg}")
+            return ""
 
     def upload_file(self, local_file_path: str, oss_file_path: str) -> str:
         """
