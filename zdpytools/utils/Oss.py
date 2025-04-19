@@ -86,7 +86,8 @@ class Oss:
             'https://bucket-name.oss-cn-hangzhou.aliyuncs.com/images/file.jpg'
         """
         try:
-            with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+            tmp_file = tempfile.NamedTemporaryFile(delete=False)
+            try:
                 with httpx.stream('GET', url) as response:
                     response.raise_for_status()
 
@@ -111,13 +112,21 @@ class Oss:
                 # 确保数据写入磁盘
                 tmp_file.flush()
                 os.fsync(tmp_file.fileno())
+                # 关闭文件句柄
+                tmp_file.close()
 
                 # 上传文件到OSS
+                result = self.upload_file(tmp_file.name, oss_file_path)
+                return result
+            finally:
+                # 确保文件句柄已关闭
+                if not tmp_file.closed:
+                    tmp_file.close()
+                # 删除临时文件
                 try:
-                    return self.upload_file(tmp_file.name, oss_file_path)
-                finally:
-                    # 删除临时文件
                     os.unlink(tmp_file.name)
+                except Exception as e:
+                    logger.warning(f"删除临时文件失败: {e}")
 
         except Exception as e:
             errmsg = f"{e}\n{traceback.format_exc()}"
@@ -160,7 +169,8 @@ class Oss:
                                 filename = 'downloaded_file'
                         oss_file_path = filename
 
-                    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+                    tmp_file = tempfile.NamedTemporaryFile(delete=False)
+                    try:
                         # 流式下载文件
                         async for chunk in response.aiter_bytes(chunk_size=8192):
                             if chunk:
@@ -169,13 +179,21 @@ class Oss:
                         # 确保数据写入磁盘
                         tmp_file.flush()
                         os.fsync(tmp_file.fileno())
+                        # 关闭文件句柄
+                        tmp_file.close()
 
                         # 上传文件到OSS
+                        result = await self.upload_file_async(tmp_file.name, oss_file_path)
+                        return result
+                    finally:
+                        # 确保文件句柄已关闭
+                        if not tmp_file.closed:
+                            tmp_file.close()
+                        # 删除临时文件
                         try:
-                            return await self.upload_file_async(tmp_file.name, oss_file_path)
-                        finally:
-                            # 删除临时文件
                             os.unlink(tmp_file.name)
+                        except Exception as e:
+                            logger.warning(f"删除临时文件失败: {e}")
 
         except Exception as e:
             errmsg = f"{e}\n{traceback.format_exc()}"
