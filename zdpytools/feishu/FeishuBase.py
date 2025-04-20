@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 from urllib.parse import urlencode
 from .const import *
 from .exception import LarkException
@@ -155,7 +155,7 @@ class FeishuBase:
         if self.client:
             await self.client.aclose()
 
-    async def batch_get_tmp_download_url(self, file_tokens: list =None, extra: Optional[str|dict] = None) -> dict:
+    async def batch_get_tmp_download_url(self, file_tokens: list =None, extra: Optional[Union[str, dict]] = None) -> dict:
         """
         获取素材临时下载链接
 
