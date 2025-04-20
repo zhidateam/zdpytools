@@ -8,3 +8,4 @@ __version__ = "0.1.9"
 from . import feishu
 from . import autodl
 from . import utils
+from . import aihubmax
