@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="zdpytools",
-    version="0.1.10",
+    version="0.1.11",
     author="zhidateam",
     author_email="zhidateam@163.com",
     description="Python工具集，包含飞书API、AutoDL API和日志工具",
@@ -18,7 +18,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.12",
+    python_requires=">=3.8",
     install_requires=[
         "loguru>=0.7.3",
         "httpx>=0.27.2",
