@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional, Union, BinaryIO, Dict, Any
 from urllib.parse import urlencode
 from .const import *
 from .exception import LarkException
@@ -7,6 +7,7 @@ import httpx
 import json
 import time
 import os
+import io
 
 
 # 本文件仅实现飞书原版接口调用，不进行进一步封装
@@ -154,6 +155,108 @@ class FeishuBase:
         """
         if self.client:
             await self.client.aclose()
+
+    async def upload_media(self, file_path: str = None, file_content: bytes = None, file_name: str = None,
+                          parent_type: str = "docx_image", parent_node: str = None,
+                          extra: Optional[Union[str, Dict[str, Any]]] = None) -> dict:
+        """
+        上传素材到飞书云文档
+
+        :param file_path: 文件路径，与file_content二选一
+        :param file_content: 文件内容的二进制数据，与file_path二选一
+        :param file_name: 文件名称，如果使用file_path且未提供file_name，则使用file_path的文件名
+        :param parent_type: 上传点类型，可选值包括：
+                          - doc_image：旧版文档图片
+                          - docx_image：新版文档图片
+                          - sheet_image：电子表格图片
+                          - doc_file：旧版文档文件
+                          - docx_file：新版文档文件
+        :param parent_node: 上传点的token，即要上传到的云文档token
+        :param extra: 额外参数，格式为字典或JSON字符串，例如：{"drive_route_token":"doxcnXgNGAtaAraIRVeCfmabcef"}
+        :return: 响应数据，包含file_token
+
+        文档: https://open.feishu.cn/document/server-docs/docs/drive-v1/media/upload_all
+        """
+        if not file_path and not file_content:
+            raise ValueError("必须提供file_path或file_content参数")
+
+        if not parent_node:
+            raise ValueError("必须提供parent_node参数")
+
+        # 获取文件内容和文件名
+        if file_path:
+            with open(file_path, 'rb') as f:
+                file_content = f.read()
+            if not file_name:
+                file_name = os.path.basename(file_path)
+        elif not file_name:
+            raise ValueError("使用file_content时必须提供file_name参数")
+
+        # 获取文件大小
+        file_size = len(file_content)
+        if file_size > 20 * 1024 * 1024:  # 20MB
+            raise ValueError("文件大小不能超过20MB，请使用分片上传")
+
+        # 构建URL
+        url = f"{FEISHU_HOST}{UPLOAD_MEDIA_URI}"
+
+        # 准备授权token
+        await self._authorize_tenant_access_token_if_needed()
+
+        # 构建表单数据
+        form_data = {
+            'file_name': file_name,
+            'parent_type': parent_type,
+            'parent_node': parent_node,
+            'size': str(file_size),
+            'file': (file_name, file_content)
+        }
+
+        # 添加可选参数
+        if extra:
+            if isinstance(extra, dict):
+                extra = json.dumps(extra)
+            form_data['extra'] = extra
+
+        # 使用httpx的files参数处理文件上传
+        files = {
+            'file': (file_name, file_content, 'application/octet-stream')
+        }
+
+        # 移除files中的file键，因为它会在files参数中提供
+        form_data_without_file = {k: v for k, v in form_data.items() if k != 'file'}
+
+        headers = {
+            "Authorization": "Bearer " + self._tenant_access_token
+        }
+
+        if self.print_feishu_log:
+            logger.debug(f"POST 请求飞书上传接口: {url}")
+            logger.debug(f"表单数据: {form_data_without_file}")
+
+        try:
+            response = await self.client.post(url, data=form_data_without_file, files=files, headers=headers)
+
+            if response.status_code != 200:
+                logger.error(f"HTTP 状态码异常: {response.status_code}, 响应内容: {response.text}")
+                raise LarkException(code=response.status_code, msg="HTTP状态码异常", url=url, req_body=form_data_without_file, headers=headers)
+
+            resp_data = response.json()
+
+            if self.print_feishu_log:
+                logger.debug(f"飞书接口响应: {resp_data}")
+
+            if resp_data.get("code", -1) != 0:
+                logger.error(f"接口返回错误, URL: {url}, 错误信息: {resp_data}")
+                raise LarkException(code=resp_data.get("code"), msg=resp_data.get("msg"), url=url, req_body=form_data_without_file, headers=headers)
+
+            return resp_data.get("data", {})
+        except httpx.HTTPError as e:
+            logger.error(f"请求飞书上传接口异常: {e}, URL: {url}")
+            raise LarkException(code=-1, msg=f"请求失败: {str(e)}", url=url, req_body=form_data_without_file, headers=headers)
+        except json.JSONDecodeError as e:
+            logger.error(f"解析上传响应 JSON 失败: {e}, URL: {url}")
+            raise LarkException(code=-1, msg="响应解析失败", url=url, req_body=form_data_without_file, headers=headers)
 
     async def batch_get_tmp_download_url(self, file_tokens: list =None, extra: Optional[Union[str, dict]] = None) -> dict:
         """

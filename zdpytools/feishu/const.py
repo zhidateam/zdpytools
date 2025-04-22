@@ -19,3 +19,6 @@ TABLES_FIELDS = '/open-apis/bitable/v1/apps/:app_token/tables/:table_id/fields/:
 
 # 获取素材临时下载链接 https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/drive-v1/media/batch_get_tmp_download_url
 BATCH_GET_TMP_DOWNLOAD_URL = '/open-apis/drive/v1/medias/batch_get_tmp_download_url'
+
+# 上传素材 https://open.feishu.cn/document/server-docs/docs/drive-v1/media/upload_all
+UPLOAD_MEDIA_URI = '/open-apis/drive/v1/medias/upload_all'
