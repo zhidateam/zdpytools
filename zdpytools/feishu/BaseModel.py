@@ -167,7 +167,7 @@ class BaseModel:
         return " and ".join(condition_list)
 
     # 构造飞书多维表格筛选条件
-    def build_filter_condition(self, field_name: str, operator: str, value: any) -> dict:
+    def build_filter_condition(self, field_name: str, operator: str, value: any = None) -> dict:
         """
         构造单个筛选条件
 
