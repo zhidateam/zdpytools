@@ -7,7 +7,7 @@ from ..utils.log import logger
 
 #飞书模型基类
 class BaseModel:
-    def __init__(self, app_id: str, app_secret: str, app_token: str, table_id: str,async_get_fileds: bool = True):
+    def __init__(self, app_id: str, app_secret: str, app_token: str, table_id: str,async_get_fileds: bool = False):
         self.app_id: str = app_id
         self.app_secret: str = app_secret
         self.app_token: str = app_token
@@ -15,8 +15,21 @@ class BaseModel:
         self.feishu: Feishu = Feishu(app_id, app_secret)
         self.async_get_fileds:bool = async_get_fileds
     #查询所有记录
-    async def get_all_records(self, filter: dict = {}):
-        return await self.feishu.get_all_records(self.app_token, self.table_id, filter)
+    async def get_all_records(self, filter: dict = {}) -> list[dict]:
+        records = await self.feishu.get_all_records(self.app_token, self.table_id, filter)
+        res = []
+        for record in records:
+            if not record or record == {}:
+                continue
+            res.append(await self.auto_data_filed2dict(record.get('fields'), record.get('record_id')))
+        return res
+    #查询单条记录
+    async def get_record(self, filter: dict = {}) -> dict:
+        record = await self.feishu.get_record(self.app_token, self.table_id, filter)
+        if not record or record == {}:
+            return {}
+        res = await self.auto_data_filed2dict(record.get('fields'), record.get('record_id'))
+        return res
     # 根据record_id查询单条记录
     async def get_record_by_record_id(self, record_id: str) -> dict:
         record = await self.feishu.get_record_by_id(self.app_token, self.table_id, record_id)
