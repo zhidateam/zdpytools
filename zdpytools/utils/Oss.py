@@ -482,3 +482,60 @@ class Oss:
         if oss_file_path.endswith("//"):
             oss_file_path = oss_file_path[:-1]
         return oss_file_path
+
+    def get_presigned_url(self, oss_file_path: str, expires: int = 3600, http_method: str = 'GET', slash_safe: bool = True) -> str:
+        """
+        生成OSS文件的预签名URL，用于临时访问私有Bucket中的文件
+
+        Args:
+            oss_file_path: OSS中的文件路径，如'images/file.jpg'
+            expires: URL的有效期，单位为秒，默认为3600秒（1小时），最长为7天
+            http_method: HTTP请求方法，默认为'GET'
+            slash_safe: 是否对URL中的斜杠进行安全处理，默认为True
+
+        Returns:
+            str: 预签名URL，失败返回空字符串
+
+        Example:
+            >>> oss = Oss(config)
+            >>> url = oss.get_presigned_url('images/file.jpg', 3600)
+            >>> print(url)
+            'https://bucket-name.oss-cn-hangzhou.aliyuncs.com/images/file.jpg?OSSAccessKeyId=xxx&Expires=xxx&Signature=xxx'
+        """
+        try:
+            oss_file_path = self.get_remote_path(oss_file_path)
+            url = self.bucket.sign_url(http_method, oss_file_path, expires, slash_safe=slash_safe)
+            return url
+        except Exception as e:
+            errmsg = f"{e}\n{traceback.format_exc()}"
+            logger.error(f"生成预签名URL失败: {errmsg}")
+            return ""
+
+    async def get_presigned_url_async(self, oss_file_path: str, expires: int = 3600, http_method: str = 'GET', slash_safe: bool = True) -> str:
+        """
+        异步生成OSS文件的预签名URL，用于临时访问私有Bucket中的文件
+
+        Args:
+            oss_file_path: OSS中的文件路径，如'images/file.jpg'
+            expires: URL的有效期，单位为秒，默认为3600秒（1小时），最长为7天
+            http_method: HTTP请求方法，默认为'GET'
+            slash_safe: 是否对URL中的斜杠进行安全处理，默认为True
+
+        Returns:
+            str: 预签名URL，失败返回空字符串
+
+        Example:
+            >>> oss = Oss(config)
+            >>> url = await oss.get_presigned_url_async('images/file.jpg', 3600)
+            >>> print(url)
+            'https://bucket-name.oss-cn-hangzhou.aliyuncs.com/images/file.jpg?OSSAccessKeyId=xxx&Expires=xxx&Signature=xxx'
+        """
+        try:
+            oss_file_path = self.get_remote_path(oss_file_path)
+            # 使用asyncio.to_thread将同步操作转换为异步操作
+            url = await asyncio.to_thread(self.bucket.sign_url, http_method, oss_file_path, expires, slash_safe=slash_safe)
+            return url
+        except Exception as e:
+            errmsg = f"{e}\n{traceback.format_exc()}"
+            logger.error(f"异步生成预签名URL失败: {errmsg}")
+            return ""
