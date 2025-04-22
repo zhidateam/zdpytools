@@ -377,29 +377,6 @@ class Feishu(FeishuBase):
         fields = items[0].get('fields', {})
         return {'record_id': record_id, 'fields': fields}
 
-    def _determine_parent_type(self, file_name: str, content_type: str = None) -> str:
-        """
-        根据文件名或MIME类型确定适合的parent_type
-
-        :param file_name: 文件名
-        :param content_type: MIME类型（可选）
-        :return: 适合的parent_type，默认为"docx_file"
-        """
-        # 图片扩展名列表
-        image_extensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg"]
-
-        # 检查文件扩展名
-        file_ext = os.path.splitext(file_name.lower())[1]
-        if file_ext in image_extensions:
-            return "docx_image"
-
-        # 如果提供了MIME类型，也检查它
-        if content_type and content_type.startswith("image/"):
-            return "docx_image"
-
-        # 默认使用docx_file
-        return "docx_file"
-
     async def _convert_to_file_token(self, value: Union[str, bytes], app_token: str, table_id: str) -> Optional[Dict[str, Any]]:
         """
         将URL、二进制内容或文件路径转换为飞书文件token
@@ -408,8 +385,6 @@ class Feishu(FeishuBase):
         :param app_token: 应用Token
         :param table_id: 表格ID
         :return: 文件token字典，包含 file_token 和其他元数据
-
-        注意：会根据文件扩展名或MIME类型自动选择适合的parent_type（docx_image或docx_file）
         """
         try:
             # 如果已经是文件token字典，直接返回
@@ -418,7 +393,6 @@ class Feishu(FeishuBase):
 
             file_name = None
             file_content = None
-            content_type = None
 
             # 判断是URL、二进制内容还是文件路径
             if isinstance(value, str):
@@ -431,9 +405,6 @@ class Feishu(FeishuBase):
                         response.raise_for_status()
                         file_content = response.content
 
-                        # 获取内容类型
-                        content_type = response.headers.get('content-type', '')
-
                         # 尝试从响应头或URL中提取文件名
                         content_disposition = response.headers.get('content-disposition')
                         if content_disposition and 'filename=' in content_disposition:
@@ -445,6 +416,7 @@ class Feishu(FeishuBase):
                         if not file_name or file_name == '':
                             # 生成随机文件名
                             file_ext = ''
+                            content_type = response.headers.get('content-type', '')
                             if '/' in content_type:
                                 file_ext = '.' + content_type.split('/')[-1]
                             file_name = f"download_{int(time.time())}{file_ext}"
@@ -471,14 +443,11 @@ class Feishu(FeishuBase):
                 # 构建附件的extra参数，指定表格权限
                 extra = {"bitablePerm": {"tableId": table_id, "rev": 5}}
 
-                # 确定适合的parent_type
-                parent_type = self._determine_parent_type(file_name, content_type)
-
                 # 上传文件
                 result = await self.upload_media(
                     file_content=file_content,
                     file_name=file_name,
-                    parent_type=parent_type,  # 根据文件类型自动选择
+                    parent_type="docx_file",  # 默认使用新版文档文件类型
                     parent_node=app_token,  # 使用app_token作为上传点
                     extra=extra
                 )
@@ -489,7 +458,7 @@ class Feishu(FeishuBase):
                         "file_token": result['file_token'],
                         "name": file_name,
                         "size": len(file_content),
-                        "type": content_type or "application/octet-stream"  # 使用检测到的MIME类型或默认值
+                        "type": "application/octet-stream"  # 默认MIME类型
                     }
 
             return None
