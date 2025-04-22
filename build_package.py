@@ -143,7 +143,7 @@ def read_api_key():
         print(f"读取 API 密钥失败: {e}")
         return None
 
-def upload_to_pypi(api_key):
+def upload_to_pypi(api_key,new_version):
     """上传包到 PyPI"""
     print("正在上传到 PyPI...")
 
@@ -160,6 +160,7 @@ def upload_to_pypi(api_key):
         )
         if result.returncode == 0:
             print("上传成功！")
+            print(f"使用pip install zdpytools=={new_version} -i https://pypi.org/simple/ 安装最新版本")
             return True
         else:
             print("上传失败！")
@@ -201,7 +202,7 @@ def main():
     if upload_choice == 'y':
         api_key = read_api_key()
         if api_key:
-            upload_to_pypi(api_key)
+            upload_to_pypi(api_key,new_version)
         else:
             print("无法获取 API 密钥，上传取消")
     else:
