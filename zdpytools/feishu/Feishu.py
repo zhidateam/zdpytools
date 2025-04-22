@@ -252,7 +252,29 @@ class Feishu(FeishuBase):
                 return_data.append({'record_id': record_id, 'fields': fields})
 
         return return_data
-
+    async def get_record(self, app_token: str, table_id: str, filter: dict = {}) -> dict:
+        """
+        查询单条记录
+        :param app_token: 应用Token
+        :param table_id: 表格ID
+        :param filter: 筛选条件
+        :return: 记录数据字典
+        """
+        return_data = {}
+        try:
+            res = await self.bitable_records_search(app_token, table_id, req_body=filter)
+            logger.debug(f"查询记录: {res}")
+        except Exception as e:
+            logger.error(f"查询记录失败: {str(e)}")
+            return return_data
+        items = res.get('items', [])
+        if not items:
+            return return_data
+        for item in items:
+            record_id = item.get('record_id')
+            fields = item.get('fields', {})
+            return_data = {'record_id': record_id, 'fields': fields}
+        return return_data
     async def get_record_by_id(self, app_token: str, table_id: str, record_id: str) -> dict:
         """
         根据record_id查询单条记录
