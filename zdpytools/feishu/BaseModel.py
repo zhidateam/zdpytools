@@ -52,6 +52,7 @@ class BaseModel:
         if not record or record == {}:
             return {}
         res = await self.auto_data_filed2dict(record.get('fields'), record.get('record_id'))
+        res['total'] = record.get('total')
         return res
     # 根据关键字查询多条记录，返回列表
     async def get_records_by_key(self, field_name: str, value: str) -> list[dict]:

@@ -239,12 +239,12 @@ class Feishu(FeishuBase):
         except Exception as e:
             logger.error(f"克隆字段过程中发生错误: {e}\n{traceback.format_exc()}")
             return False
-    async def get_all_records(self, app_token: str, table_id: str, filter: dict = {}) -> list[dict]:
+    async def get_all_records(self, app_token: str, table_id: str, req_body: dict = {}) -> list[dict]:
         """
         查询所有记录
         :param app_token: 应用Token
         :param table_id: 表格ID
-        :param filter: 筛选条件
+        :param req_body: 筛选条件
         :return: 记录数据列表
         """
         page_token = ""
@@ -257,7 +257,7 @@ class Feishu(FeishuBase):
                 param['page_token'] = page_token
 
             try:
-                res = await self.bitable_records_search(app_token, table_id, param=param, req_body=filter)
+                res = await self.bitable_records_search(app_token, table_id, param=param, req_body=req_body)
                 logger.debug(f"查询记录: {res}")
             except Exception as e:
                 logger.error(f"查询记录失败: {str(e)}")
@@ -276,17 +276,17 @@ class Feishu(FeishuBase):
                 return_data.append({'record_id': record_id, 'fields': fields})
 
         return return_data
-    async def get_record(self, app_token: str, table_id: str, filter: dict = {}) -> dict:
+    async def get_record(self, app_token: str, table_id: str, req_body: dict = {}) -> dict:
         """
         查询单条记录
         :param app_token: 应用Token
         :param table_id: 表格ID
-        :param filter: 筛选条件
+        :param req_body: 筛选条件
         :return: 记录数据字典
         """
         return_data = {}
         try:
-            res = await self.bitable_records_search(app_token, table_id, req_body=filter)
+            res = await self.bitable_records_search(app_token, table_id, req_body=req_body)
             logger.debug(f"查询记录: {res}")
         except Exception as e:
             logger.error(f"查询记录失败: {str(e)}")
@@ -294,10 +294,12 @@ class Feishu(FeishuBase):
         items = res.get('items', [])
         if not items:
             return return_data
-        for item in items:
-            record_id = item.get('record_id')
-            fields = item.get('fields', {})
-            return_data = {'record_id': record_id, 'fields': fields}
+        if len(items) == 0:
+            return return_data
+        record_id = items[0].get('record_id')
+        fields = items[0].get('fields', {})
+        total = res.get('total', 0)
+        return_data = {'record_id': record_id, 'fields': fields, 'total':total}
         return return_data
     async def get_record_by_id(self, app_token: str, table_id: str, record_id: str) -> dict:
         """
@@ -314,7 +316,7 @@ class Feishu(FeishuBase):
             logger.error(f"查询记录失败: {str(e)}")
             return {}
 
-    async def get_records_by_key(self, app_token: str, table_id: str, field_name: str, value: str) -> list[dict]:
+    async def get_records_by_key(self, app_token: str, table_id: str, field_name: str, value: str, sort:list=[]) -> list[dict]:
         """
         根据关键字查询多条记录
         :param app_token: 应用Token
@@ -328,13 +330,15 @@ class Feishu(FeishuBase):
             "operator": "is",
             "value": [value]
         }
-        filter = {
+        req_body = {
             "filter": {
                 "conjunction": "and",
                 "conditions": [condition]
-            }
+            },
+            "sort": sort,
+            "automatic_fields": True
         }
-        return await self.get_all_records(app_token, table_id, filter)
+        return await self.get_all_records(app_token, table_id, req_body)
     async def get_records_by_record_ids(self, app_token: str, table_id: str, record_ids: list[str]) -> list[dict]:
         """
         根据record_id查询多条记录
@@ -352,7 +356,7 @@ class Feishu(FeishuBase):
             return_data.append({'record_id': record_id, 'fields': fields})
         return return_data
 
-    async def get_record_by_key(self, app_token: str, table_id: str, field_name: str, value: str) -> dict:
+    async def get_record_by_key(self, app_token: str, table_id: str, field_name: str, value: str, sort:list=[]) -> dict:
         """
         根据关键字查询单条记录
         :param app_token: 应用Token
@@ -366,19 +370,22 @@ class Feishu(FeishuBase):
             "operator": "is",
             "value": [value]
         }
-        filter = {
+        req_body = {
             "filter": {
                 "conjunction": "and",
                 "conditions": [condition]
-            }
+            },
+            "sort": sort,
+            "automatic_fields": True
         }
-        res = await self.bitable_records_search(app_token, table_id, req_body=filter)
+        res = await self.bitable_records_search(app_token, table_id, req_body=req_body)
         items = res.get('items', [])
         if not items:
             return {}
         record_id = items[0].get('record_id')
         fields = items[0].get('fields', {})
-        return {'record_id': record_id, 'fields': fields}
+        total = res.get('total', 0)
+        return {'record_id': record_id, 'fields': fields, 'total':total}
 
 
     def _determine_parent_type(self, file_name: str, content_type: str = None) -> str:

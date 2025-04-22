@@ -131,7 +131,7 @@ class FeishuBase:
         """
         url = f"{BATCH_RECORDS}"
         url = url.replace(":app_token", app_token).replace(":table_id", table_id)
-        req_body = {"record_ids": record_ids}
+        req_body = {"record_ids": record_ids, "automatic_fields": True}
         resp = await self.req_feishu_api("POST", url=url, req_body=req_body)
         return resp.get("data")
 
