@@ -65,6 +65,8 @@ class Feishu(FeishuBase):
                 # 判断是否为日期类型
                 if "时间" in key or "日期" in key:
                     field_type = 5  # 日期类型
+                elif "编号" in key:
+                    field_type = 1005  # 自动编号类型
                 elif isinstance(value, (int, float)):
                     field_type = 2  # 数字类型
 
