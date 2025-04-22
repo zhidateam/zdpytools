@@ -9,6 +9,8 @@ import json
 import time
 import os
 import datetime
+import re
+from typing import Union, Optional, Dict, Any, BinaryIO
 
 
 # 本文件实现一些拓展接口，方便使用
@@ -99,6 +101,23 @@ class Feishu(FeishuBase):
                     elif isinstance(value, datetime.datetime):
                         value = int(value.timestamp() * 1000)
                     fields[key] = value
+                elif type==17:
+                    #附件，自动把url或者二进制内容或者文件路径转为file_token
+                    try:
+                        # 将value转换为列表，如果不是列表的话
+                        if not isinstance(value, list):
+                            value = [value]
+
+                        file_tokens = []
+                        for item in value:
+                            file_token = await self._convert_to_file_token(item, app_token, table_id)
+                            if file_token:
+                                file_tokens.append(file_token)
+
+                        if file_tokens:
+                            fields[key] = file_tokens
+                    except Exception as e:
+                        logger.error(f"附件转换失败: {e}\n{traceback.format_exc()}")
 
 
     async def get_tables_fields(self, app_token: str, table_id: str) -> dict:
@@ -357,3 +376,123 @@ class Feishu(FeishuBase):
         record_id = items[0].get('record_id')
         fields = items[0].get('fields', {})
         return {'record_id': record_id, 'fields': fields}
+
+    def _determine_parent_type(self, file_name: str, content_type: str = None) -> str:
+        """
+        根据文件名或MIME类型确定适合的parent_type
+
+        :param file_name: 文件名
+        :param content_type: MIME类型（可选）
+        :return: 适合的parent_type，默认为"docx_file"
+        """
+        # 图片扩展名列表
+        image_extensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg"]
+
+        # 检查文件扩展名
+        file_ext = os.path.splitext(file_name.lower())[1]
+        if file_ext in image_extensions:
+            return "docx_image"
+
+        # 如果提供了MIME类型，也检查它
+        if content_type and content_type.startswith("image/"):
+            return "docx_image"
+
+        # 默认使用docx_file
+        return "docx_file"
+
+    async def _convert_to_file_token(self, value: Union[str, bytes], app_token: str, table_id: str) -> Optional[Dict[str, Any]]:
+        """
+        将URL、二进制内容或文件路径转换为飞书文件token
+
+        :param value: URL、二进制内容或文件路径
+        :param app_token: 应用Token
+        :param table_id: 表格ID
+        :return: 文件token字典，包含 file_token 和其他元数据
+
+        注意：会根据文件扩展名或MIME类型自动选择适合的parent_type（docx_image或docx_file）
+        """
+        try:
+            # 如果已经是文件token字典，直接返回
+            if isinstance(value, dict) and 'file_token' in value:
+                return value
+
+            file_name = None
+            file_content = None
+            content_type = None
+
+            # 判断是URL、二进制内容还是文件路径
+            if isinstance(value, str):
+                # 检查是否是URL
+                url_pattern = re.compile(r'^https?://\S+$')
+                if url_pattern.match(value):
+                    # 下载URL内容
+                    async with httpx.AsyncClient(timeout=30.0) as client:
+                        response = await client.get(value)
+                        response.raise_for_status()
+                        file_content = response.content
+
+                        # 获取内容类型
+                        content_type = response.headers.get('content-type', '')
+
+                        # 尝试从响应头或URL中提取文件名
+                        content_disposition = response.headers.get('content-disposition')
+                        if content_disposition and 'filename=' in content_disposition:
+                            file_name = re.findall(r'filename="?([^"]+)"?', content_disposition)[0]
+                        else:
+                            # 从 URL 中提取文件名
+                            file_name = os.path.basename(value.split('?')[0])
+
+                        if not file_name or file_name == '':
+                            # 生成随机文件名
+                            file_ext = ''
+                            if '/' in content_type:
+                                file_ext = '.' + content_type.split('/')[-1]
+                            file_name = f"download_{int(time.time())}{file_ext}"
+                else:
+                    # 假设是文件路径
+                    if os.path.exists(value):
+                        with open(value, 'rb') as f:
+                            file_content = f.read()
+                        file_name = os.path.basename(value)
+                    else:
+                        logger.error(f"文件不存在: {value}")
+                        return None
+            elif isinstance(value, bytes):
+                # 直接使用二进制内容
+                file_content = value
+                # 生成随机文件名
+                file_name = f"file_{int(time.time())}.bin"
+            else:
+                logger.error(f"不支持的值类型: {type(value)}")
+                return None
+
+            # 上传文件到飞书
+            if file_content and file_name:
+                # 构建附件的extra参数，指定表格权限
+                extra = {"bitablePerm": {"tableId": table_id, "rev": 5}}
+
+                # 确定适合的parent_type
+                parent_type = self._determine_parent_type(file_name, content_type)
+
+                # 上传文件
+                result = await self.upload_media(
+                    file_content=file_content,
+                    file_name=file_name,
+                    parent_type=parent_type,  # 根据文件类型自动选择
+                    parent_node=app_token,  # 使用app_token作为上传点
+                    extra=extra
+                )
+
+                if result and 'file_token' in result:
+                    # 构建飞书附件格式的返回值
+                    return {
+                        "file_token": result['file_token'],
+                        "name": file_name,
+                        "size": len(file_content),
+                        "type": content_type or "application/octet-stream"  # 使用检测到的MIME类型或默认值
+                    }
+
+            return None
+        except Exception as e:
+            logger.error(f"转换文件token失败: {e}\n{traceback.format_exc()}")
+            return None
