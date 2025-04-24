@@ -1,3 +1,6 @@
+import datetime
+import random
+import time
 import oss2
 import urllib.parse
 import json
@@ -67,13 +70,13 @@ class Oss:
         self.bucket = oss2.Bucket(self.auth, self.endpoint, self.bucket_name)
         self.root_path = default_config.get("root_path", "")
 
-    def upload_file_from_url(self, url: str, oss_file_path: Optional[str] = None) -> str:
+    def upload_file_from_url(self, url: str, oss_file_path: Optional[str] = "") -> str:
         """
         从URL下载文件并上传到OSS，使用流式传输以节省内存
 
         Args:
             url: 需要下载的文件URL
-            oss_file_path: OSS中的目标路径，如'images/file.jpg'。
+            oss_file_path: OSS中的目标路径，如'images/file.jpg' 或 'images/file'。   
                           如果不提供，将从URL或响应头中获取文件名
 
         Returns:
@@ -91,18 +94,43 @@ class Oss:
                 with httpx.stream('GET', url) as response:
                     response.raise_for_status()
 
+
+                    # 获取链接中的文件名
+                    request_file_name = ""
+                    content_disposition = response.headers.get('content-disposition')
+                    
+                    url_file_name = os.path.basename(urllib.parse.urlparse(url).path)
+                    # 先尝试从Content-Disposition获取文件名
+                    if content_disposition and 'filename=' in content_disposition:
+                        request_file_name = content_disposition.split('filename=')[-1].strip('"\'')
+                    # 如果没有Content-Disposition，从URL路径获取文件名
+                    elif url_file_name:
+                        request_file_name = url_file_name
+                    
+                    # 文件后缀
+                    content_type_ext = ""
+                    if not request_file_name:
+                        # 尝试从Content-Type获取文件名后缀
+                        content_type = response.headers.get('content-type')
+                        if content_type and '/' in content_type:
+                            file_ext = f"downloaded_file.{content_type.split('/')[-1]}"
+                    
+                    file_ext = ""
+                    if not request_file_name:
+                        file_ext = content_type_ext
+                    else:
+                        file_ext = os.path.splitext(request_file_name)[-1]
+                    
+                    if "." in file_ext:
+                        file_ext = file_ext.split(".")[-1]
+
                     # 如果没有提供oss_file_path，尝试从URL或header获取文件名
                     if not oss_file_path:
-                        # 先尝试从Content-Disposition获取文件名
-                        content_disposition = response.headers.get('content-disposition')
-                        if content_disposition and 'filename=' in content_disposition:
-                            filename = content_disposition.split('filename=')[-1].strip('"\'')
-                        else:
-                            # 如果没有Content-Disposition，从URL路径获取文件名
-                            filename = os.path.basename(urllib.parse.urlparse(url).path)
-                            if not filename:
-                                filename = 'downloaded_file'
-                        oss_file_path = filename
+                        # 文件名格式 20250424081415_{毫秒级时间戳}_{随机数}
+                        oss_file_path =  f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}_{int(time.time())}_{random.randint(1000, 9999)}.{file_ext}"
+                    # 或者如果 oss_file_path 有传值，但是没有后缀
+                    elif "." not in oss_file_path:
+                        oss_file_path = f"{oss_file_path}.{file_ext}"
 
                     # 流式下载文件
                     for chunk in response.iter_bytes(chunk_size=8192):
