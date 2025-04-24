@@ -107,7 +107,7 @@ asyncio.run(example())
 
 ## 封装更新
 
-修改setup.py中的版本
+<!-- 修改setup.py中的版本
 ```python
     version="xxx",
 ```
@@ -119,14 +119,14 @@ __version__ = "0.1.1"
 
 
 
-运行构建脚本
+运行构建脚本 -->
 ```bash
 python build_package.py
 ```
-发布
+<!-- 发布
 ```bash
 twine upload dist/*
-```
+``` -->
 
 ## 许可证
 
