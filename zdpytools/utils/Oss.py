@@ -37,7 +37,8 @@ class Oss:
             "access_secret": "",
             "region": "",
             "bucket": "",
-            "root_path": ""
+            "root_path": "",
+            "host": ""
         }
 
         try:
@@ -59,10 +60,12 @@ class Oss:
         self.region = default_config["region"]
         self.bucket_name = default_config["bucket"]
 
-        if "host" in default_config:
+        host_name = default_config["host"]
+
+        if host_name:
             self.endpoint = f"{self.region}.aliyuncs.com"
-            host = default_config["host"]
-            self.url = f"https://{host}"
+            # host = default_config["host"]
+            self.url = f"https://{host_name}"
         else:
             self.endpoint = f"{self.region}.aliyuncs.com"
             self.url = f"https://{self.bucket_name}.{self.endpoint}"
@@ -70,7 +73,8 @@ class Oss:
         self.bucket = oss2.Bucket(self.auth, self.endpoint, self.bucket_name)
         self.root_path = default_config.get("root_path", "")
 
-    def upload_file_from_url(self, url: str, oss_file_path: Optional[str] = "") -> str:
+    def upload_file_from_url(self, url: str, oss_file_path: Optional[str] = "",headers=None,
+                             progress_callback=None) -> str:
         """
         从URL下载文件并上传到OSS，使用流式传输以节省内存
 
@@ -127,7 +131,7 @@ class Oss:
                     # 如果没有提供oss_file_path，尝试从URL或header获取文件名
                     if not oss_file_path:
                         # 文件名格式 20250424081415_{毫秒级时间戳}_{随机数}
-                        oss_file_path =  f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}_{int(time.time())}_{random.randint(1000, 9999)}.{file_ext}"
+                        oss_file_path =  f"default/{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}_{int(time.time())}_{random.randint(1000, 9999)}.{file_ext}"
                     # 或者如果 oss_file_path 有传值，但是没有后缀
                     elif "." not in oss_file_path:
                         oss_file_path = f"{oss_file_path}.{file_ext}"
@@ -144,7 +148,8 @@ class Oss:
                 tmp_file.close()
 
                 # 上传文件到OSS
-                result = self.upload_file(tmp_file.name, oss_file_path)
+                result = self.upload_file(tmp_file.name, oss_file_path,headers=None,
+                             progress_callback=None)
                 return result
             finally:
                 # 确保文件句柄已关闭
@@ -161,7 +166,8 @@ class Oss:
             logger.error(f"从URL上传文件到OSS失败: {errmsg}")
             return ""
 
-    async def upload_file_from_url_async(self, url: str, oss_file_path: Optional[str] = None) -> str:
+    async def upload_file_from_url_async(self, url: str, oss_file_path: Optional[str] = None,headers=None,
+                             progress_callback=None) -> str:
         """
         异步从URL下载文件并上传到OSS，使用流式传输以节省内存
 
@@ -228,7 +234,8 @@ class Oss:
             logger.error(f"异步从URL上传文件到OSS失败: {errmsg}")
             return ""
 
-    def upload_file(self, local_file_path: str, oss_file_path: str) -> str:
+    def upload_file(self, local_file_path: str, oss_file_path: str,headers=None,
+                             progress_callback=None) -> str:
         """
         上传文件到OSS
 
@@ -247,7 +254,9 @@ class Oss:
         """
         try:
             oss_file_path = self.get_remote_path(oss_file_path)
-            self.bucket.put_object_from_file(oss_file_path, local_file_path)
+            self.bucket.put_object_from_file(oss_file_path, local_file_path,
+                                             headers=None,
+                             progress_callback=None)
             path = f"{self.url}/{urllib.parse.quote(oss_file_path)}"
             return path
         except Exception as e:
@@ -255,7 +264,8 @@ class Oss:
             logger.error(f"上传文件到OSS失败: {errmsg}")
             return ""
 
-    async def upload_file_async(self, local_file_path: str, oss_file_path: str) -> str:
+    async def upload_file_async(self, local_file_path: str, oss_file_path: str,headers=None,
+                             progress_callback=None) -> str:
         """
         异步上传文件到OSS
 
