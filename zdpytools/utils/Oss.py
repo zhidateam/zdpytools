@@ -6,9 +6,8 @@ import traceback
 from pathlib import Path
 import asyncio
 from typing import Any, Dict, Optional, Union, List
-import tempfile
 import os
-import httpx
+from .download import download_file_to_temp, download_file_to_temp_async
 
 
 class Oss:
@@ -86,45 +85,21 @@ class Oss:
             'https://bucket-name.oss-cn-hangzhou.aliyuncs.com/images/file.jpg'
         """
         try:
-            tmp_file = tempfile.NamedTemporaryFile(delete=False)
+            # 使用新的下载函数，支持302重定向追踪
+            filename, tmp_file_path = download_file_to_temp(url, follow_redirects=True)
+
             try:
-                with httpx.stream('GET', url) as response:
-                    response.raise_for_status()
-
-                    # 如果没有提供oss_file_path，尝试从URL或header获取文件名
-                    if not oss_file_path:
-                        # 先尝试从Content-Disposition获取文件名
-                        content_disposition = response.headers.get('content-disposition')
-                        if content_disposition and 'filename=' in content_disposition:
-                            filename = content_disposition.split('filename=')[-1].strip('"\'')
-                        else:
-                            # 如果没有Content-Disposition，从URL路径获取文件名
-                            filename = os.path.basename(urllib.parse.urlparse(url).path)
-                            if not filename:
-                                filename = 'downloaded_file'
-                        oss_file_path = filename
-
-                    # 流式下载文件
-                    for chunk in response.iter_bytes(chunk_size=8192):
-                        if chunk:
-                            tmp_file.write(chunk)
-
-                # 确保数据写入磁盘
-                tmp_file.flush()
-                os.fsync(tmp_file.fileno())
-                # 关闭文件句柄
-                tmp_file.close()
+                # 如果没有提供oss_file_path，使用下载时获取的文件名
+                if not oss_file_path:
+                    oss_file_path = filename
 
                 # 上传文件到OSS
-                result = self.upload_file(tmp_file.name, oss_file_path)
+                result = self.upload_file(tmp_file_path, oss_file_path)
                 return result
             finally:
-                # 确保文件句柄已关闭
-                if not tmp_file.closed:
-                    tmp_file.close()
                 # 删除临时文件
                 try:
-                    os.unlink(tmp_file.name)
+                    os.unlink(tmp_file_path)
                 except Exception as e:
                     logger.warning(f"删除临时文件失败: {e}")
 
@@ -152,48 +127,23 @@ class Oss:
             'https://bucket-name.oss-cn-hangzhou.aliyuncs.com/images/file.jpg'
         """
         try:
-            async with httpx.AsyncClient() as client:
-                async with client.stream('GET', url) as response:
-                    response.raise_for_status()
+            # 使用新的异步下载函数，支持302重定向追踪
+            filename, tmp_file_path = await download_file_to_temp_async(url, follow_redirects=True)
 
-                    # 如果没有提供oss_file_path，尝试从URL或header获取文件名
-                    if not oss_file_path:
-                        # 先尝试从Content-Disposition获取文件名
-                        content_disposition = response.headers.get('content-disposition')
-                        if content_disposition and 'filename=' in content_disposition:
-                            filename = content_disposition.split('filename=')[-1].strip('"\'')
-                        else:
-                            # 如果没有Content-Disposition，从URL路径获取文件名
-                            filename = os.path.basename(urllib.parse.urlparse(url).path)
-                            if not filename:
-                                filename = 'downloaded_file'
-                        oss_file_path = filename
+            try:
+                # 如果没有提供oss_file_path，使用下载时获取的文件名
+                if not oss_file_path:
+                    oss_file_path = filename
 
-                    tmp_file = tempfile.NamedTemporaryFile(delete=False)
-                    try:
-                        # 流式下载文件
-                        async for chunk in response.aiter_bytes(chunk_size=8192):
-                            if chunk:
-                                tmp_file.write(chunk)
-
-                        # 确保数据写入磁盘
-                        tmp_file.flush()
-                        os.fsync(tmp_file.fileno())
-                        # 关闭文件句柄
-                        tmp_file.close()
-
-                        # 上传文件到OSS
-                        result = await self.upload_file_async(tmp_file.name, oss_file_path)
-                        return result
-                    finally:
-                        # 确保文件句柄已关闭
-                        if not tmp_file.closed:
-                            tmp_file.close()
-                        # 删除临时文件
-                        try:
-                            os.unlink(tmp_file.name)
-                        except Exception as e:
-                            logger.warning(f"删除临时文件失败: {e}")
+                # 上传文件到OSS
+                result = await self.upload_file_async(tmp_file_path, oss_file_path)
+                return result
+            finally:
+                # 删除临时文件
+                try:
+                    os.unlink(tmp_file_path)
+                except Exception as e:
+                    logger.warning(f"删除临时文件失败: {e}")
 
         except Exception as e:
             errmsg = f"{e}\n{traceback.format_exc()}"
