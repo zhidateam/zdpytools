@@ -59,11 +59,10 @@ class Oss:
         self.region = default_config["region"]
         self.bucket_name = default_config["bucket"]
 
-        host_name = default_config["host"]
+        host_name = default_config.get("host", "")
 
         if host_name:
             self.endpoint = f"{self.region}.aliyuncs.com"
-            # host = default_config["host"]
             self.url = f"https://{host_name}"
         else:
             self.endpoint = f"{self.region}.aliyuncs.com"
@@ -81,6 +80,7 @@ class Oss:
             url: 需要下载的文件URL
             oss_file_path: OSS中的目标路径，如'images/file.jpg' 或 'images/file'。
                           如果不提供，将从URL或响应头中获取文件名
+                          如果提供但没有后缀，将自动从URL中提取后缀并拼接
 
         Returns:
             str: 上传成功返回OSS文件的完整URL路径，失败返回空字符串
@@ -99,9 +99,19 @@ class Oss:
                 # 如果没有提供oss_file_path，使用下载时获取的文件名
                 if not oss_file_path:
                     oss_file_path = filename
+                else:
+                    # 检查oss_file_path是否已有后缀
+                    _, oss_ext = os.path.splitext(oss_file_path)
+                    if not oss_ext:
+                        # 从URL或filename中提取后缀
+                        _, url_ext = os.path.splitext(filename)
+                        if url_ext:
+                            # 拼接后缀到oss_file_path
+                            oss_file_path = f"{oss_file_path}{url_ext}"
 
                 # 上传文件到OSS
-                result = self.upload_file(tmp_file_path, oss_file_path)
+                result = self.upload_file(tmp_file_path, oss_file_path,headers=headers,
+                             progress_callback=progress_callback)
                 return result
             finally:
                 # 删除临时文件
@@ -124,6 +134,7 @@ class Oss:
             url: 需要下载的文件URL
             oss_file_path: OSS中的目标路径，如'images/file.jpg'。
                           如果不提供，将从URL或响应头中获取文件名
+                          如果提供但没有后缀，将自动从URL中提取后缀并拼接
 
         Returns:
             str: 上传成功返回OSS文件的完整URL路径，失败返回空字符串
@@ -142,9 +153,19 @@ class Oss:
                 # 如果没有提供oss_file_path，使用下载时获取的文件名
                 if not oss_file_path:
                     oss_file_path = filename
+                else:
+                    # 检查oss_file_path是否已有后缀
+                    _, oss_ext = os.path.splitext(oss_file_path)
+                    if not oss_ext:
+                        # 从URL或filename中提取后缀
+                        _, url_ext = os.path.splitext(filename)
+                        if url_ext:
+                            # 拼接后缀到oss_file_path
+                            oss_file_path = f"{oss_file_path}{url_ext}"
 
                 # 上传文件到OSS
-                result = await self.upload_file_async(tmp_file_path, oss_file_path)
+                result = await self.upload_file_async(tmp_file_path, oss_file_path,headers=headers,
+                             progress_callback=progress_callback)
                 return result
             finally:
                 # 删除临时文件
@@ -158,7 +179,7 @@ class Oss:
             logger.error(f"异步从URL上传文件到OSS失败: {errmsg}")
             return ""
 
-    def upload_file(self, local_file_path: str, oss_file_path: str,headers=None,
+    def upload_file(self, local_file_path: str, oss_file_path: str, headers=None,
                              progress_callback=None) -> str:
         """
         上传文件到OSS
@@ -166,6 +187,8 @@ class Oss:
         Args:
             local_file_path: 本地文件的完整路径，如'/path/to/file.jpg'
             oss_file_path: OSS中的目标路径，如'images/file.jpg'
+            headers: 可选，HTTP头信息
+            progress_callback: 可选，进度回调函数
 
         Returns:
             str: 上传成功返回OSS文件的完整URL路径，失败返回空字符串
@@ -179,8 +202,8 @@ class Oss:
         try:
             oss_file_path = self.get_remote_path(oss_file_path)
             self.bucket.put_object_from_file(oss_file_path, local_file_path,
-                                             headers=None,
-                             progress_callback=None)
+                                             headers=headers,
+                                             progress_callback=progress_callback)
             path = f"{self.url}/{urllib.parse.quote(oss_file_path)}"
             return path
         except Exception as e:
@@ -188,7 +211,7 @@ class Oss:
             logger.error(f"上传文件到OSS失败: {errmsg}")
             return ""
 
-    async def upload_file_async(self, local_file_path: str, oss_file_path: str,headers=None,
+    async def upload_file_async(self, local_file_path: str, oss_file_path: str, headers=None,
                              progress_callback=None) -> str:
         """
         异步上传文件到OSS
@@ -196,6 +219,8 @@ class Oss:
         Args:
             local_file_path: 本地文件的完整路径，如'/path/to/file.jpg'
             oss_file_path: OSS中的目标路径，如'images/file.jpg'
+            headers: 可选，HTTP头信息
+            progress_callback: 可选，进度回调函数
 
         Returns:
             str: 上传成功返回OSS文件的完整URL路径，失败返回空字符串
@@ -208,7 +233,9 @@ class Oss:
         """
         try:
             oss_file_path = self.get_remote_path(oss_file_path)
-            await asyncio.to_thread(self.bucket.put_object_from_file, oss_file_path, local_file_path)
+            await asyncio.to_thread(self.bucket.put_object_from_file, oss_file_path, local_file_path,
+                                    headers=headers,
+                                    progress_callback=progress_callback)
             path = f"{self.url}/{urllib.parse.quote(oss_file_path)}"
             return path
         except Exception as e:
