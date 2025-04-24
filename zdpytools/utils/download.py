@@ -3,23 +3,84 @@ import tempfile
 import urllib.parse
 import httpx
 import asyncio
-from typing import Optional, Tuple, Union, BinaryIO
+import mimetypes
+from typing import Optional, Tuple, Union, BinaryIO, Dict
 from pathlib import Path
 from .log import logger
 import traceback
 
 
-def extract_filename_from_response(response, url: str) -> str:
+def get_extension_from_mime_type(mime_type: str) -> str:
     """
-    从响应头或URL中提取文件名
+    根据MIME类型获取文件扩展名
+
+    Args:
+        mime_type: MIME类型，如'image/jpeg'
+
+    Returns:
+        str: 文件扩展名（包含点，如'.jpg'），如果无法确定则返回空字符串
+    """
+    if not mime_type:
+        return ""
+
+    # 初始化mimetypes模块
+    mimetypes.init()
+
+    # 获取扩展名
+    ext = mimetypes.guess_extension(mime_type)
+
+    # 一些常见MIME类型的特殊处理
+    mime_to_ext = {
+        'image/jpeg': '.jpg',
+        'image/jpg': '.jpg',
+        'image/png': '.png',
+        'image/gif': '.gif',
+        'image/webp': '.webp',
+        'image/svg+xml': '.svg',
+        'application/pdf': '.pdf',
+        'application/json': '.json',
+        'text/html': '.html',
+        'text/plain': '.txt',
+        'text/csv': '.csv',
+        'application/zip': '.zip',
+        'application/x-zip-compressed': '.zip',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
+        'application/msword': '.doc',
+        'application/vnd.ms-excel': '.xls',
+        'application/vnd.ms-powerpoint': '.ppt',
+        'audio/mpeg': '.mp3',
+        'audio/mp4': '.m4a',
+        'video/mp4': '.mp4',
+        'video/mpeg': '.mpeg',
+        'video/quicktime': '.mov',
+        'video/x-msvideo': '.avi',
+        'video/webm': '.webm',
+    }
+
+    # 如果在自定义映射中找到，使用自定义映射
+    if mime_type.lower() in mime_to_ext:
+        return mime_to_ext[mime_type.lower()]
+
+    # 否则使用mimetypes模块的结果
+    return ext if ext else ""
+
+
+def extract_filename_from_response(response, url: str) -> Tuple[str, str]:
+    """
+    从响应头或URL中提取文件名和MIME类型
 
     Args:
         response: HTTP响应对象
         url: 请求的URL
 
     Returns:
-        str: 提取的文件名，如果无法提取则返回默认名称
+        Tuple[str, str]: 包含(文件名, MIME类型)的元组，如果无法提取则返回默认名称和空MIME类型
     """
+    # 获取MIME类型
+    mime_type = response.headers.get('content-type', '').split(';')[0].strip()
+
     # 先尝试从Content-Disposition获取文件名
     content_disposition = response.headers.get('content-disposition')
     if content_disposition and 'filename=' in content_disposition:
@@ -30,7 +91,13 @@ def extract_filename_from_response(response, url: str) -> str:
         if not filename:
             filename = 'downloaded_file'
 
-    return filename
+    # 如果文件名没有扩展名，但有MIME类型，尝试添加扩展名
+    if '.' not in filename and mime_type:
+        ext = get_extension_from_mime_type(mime_type)
+        if ext:
+            filename = f"{filename}{ext}"
+
+    return filename, mime_type
 
 
 def download_file(url: str, output_path: Optional[str] = None, follow_redirects: bool = True) -> Tuple[str, bytes]:
@@ -64,8 +131,9 @@ def download_file(url: str, output_path: Optional[str] = None, follow_redirects:
             with client.stream('GET', url, headers=headers) as response:
                 response.raise_for_status()
 
-                # 获取文件名
-                filename = extract_filename_from_response(response, url)
+                # 获取文件名和MIME类型
+                filename, mime_type = extract_filename_from_response(response, url)
+                logger.debug(f"从 {url} 下载文件 {filename}，MIME类型: {mime_type}")
 
                 # 如果提供了输出路径但没有指定文件名，使用提取的文件名
                 if output_path:
@@ -126,8 +194,9 @@ def download_file_to_temp(url: str, follow_redirects: bool = True) -> Tuple[str,
                 with client.stream('GET', url, headers=headers) as response:
                     response.raise_for_status()
 
-                    # 获取文件名
-                    filename = extract_filename_from_response(response, url)
+                    # 获取文件名和MIME类型
+                    filename, mime_type = extract_filename_from_response(response, url)
+                    logger.debug(f"从 {url} 下载文件 {filename}，MIME类型: {mime_type}")
 
                     # 流式下载文件
                     for chunk in response.iter_bytes(chunk_size=8192):
@@ -188,8 +257,9 @@ async def download_file_async(url: str, output_path: Optional[str] = None, follo
             async with client.stream('GET', url, headers=headers) as response:
                 response.raise_for_status()
 
-                # 获取文件名
-                filename = extract_filename_from_response(response, url)
+                # 获取文件名和MIME类型
+                filename, mime_type = extract_filename_from_response(response, url)
+                logger.debug(f"从 {url} 下载文件 {filename}，MIME类型: {mime_type}")
 
                 # 如果提供了输出路径但没有指定文件名，使用提取的文件名
                 if output_path:
@@ -250,8 +320,9 @@ async def download_file_to_temp_async(url: str, follow_redirects: bool = True) -
                 async with client.stream('GET', url, headers=headers) as response:
                     response.raise_for_status()
 
-                    # 获取文件名
-                    filename = extract_filename_from_response(response, url)
+                    # 获取文件名和MIME类型
+                    filename, mime_type = extract_filename_from_response(response, url)
+                    logger.debug(f"从 {url} 下载文件 {filename}，MIME类型: {mime_type}")
 
                     # 流式下载文件
                     async for chunk in response.aiter_bytes(chunk_size=8192):
