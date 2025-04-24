@@ -41,3 +41,4 @@ ENV/
 .vscode/
 *.swp
 *.swo
+~/.ssh/config
