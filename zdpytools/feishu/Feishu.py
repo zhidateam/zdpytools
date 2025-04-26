@@ -33,7 +33,12 @@ class Feishu(FeishuBase):
         :return: 新增结果
         """
         await self.check_fileds(app_token, table_id, fields)
-        res = await self.update_bitable_record(app_token, table_id, fields=fields)
+        fsres = await self.update_bitable_record(app_token, table_id, fields=fields)
+        # 将fileds和record_id包在同一层内
+        res = {}
+        res['record_id'] = fsres.get("record").get('record_id')
+        for key, value in fsres.get("record").get('fields', {}).items():
+            res[key] = value
         return res
 
     async def update_record(self, app_token: str, table_id: str, record_id: str, fields: dict) -> dict:
