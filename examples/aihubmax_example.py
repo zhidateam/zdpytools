@@ -17,17 +17,12 @@ async def upload_file_example(token: str):
             test_file_path = "examples/test_file.txt"
             with open(test_file_path, "w") as f:
                 f.write("This is a test file for AIHubMax API")
-            
+
             # 上传文件
-            result = await client.upload_file(test_file_path)
+            result = await client.upload_file(test_file_path, is_long_term=True)
             logger.info(f"文件上传成功，URL: {result.get('url')}")
             logger.info(f"使用配额: {result.get('quota')}")
-            
-            # 也可以使用文件对象
-            with open(test_file_path, "rb") as f:
-                result = await client.upload_file(f, file_name="test_file_from_object.txt")
-                logger.info(f"文件对象上传成功，URL: {result.get('url')}")
-            
+
             return result
         except Exception as e:
             logger.error(f"文件上传失败: {e}")
@@ -40,13 +35,13 @@ async def upload_file_example(token: str):
 async def main():
     """主函数"""
     logger.info("开始AIHubMax API示例")
-    
+
     # 设置token
-    token = "sk-Qi7Wjrp4nldGEQwBeM8XhNqYq41jeHK1cxTc3iHnktMm07rn"  # 替换为你的token
-    
+    token = "sk-"  # 替换为你的token
+
     # 上传文件
     result = await upload_file_example(token)
-    
+
     if result:
         logger.info("测试完成")
     else:

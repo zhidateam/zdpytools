@@ -136,13 +136,14 @@ class AIHubMaxClient:
                 headers=headers
             )
 
-    async def upload_file(self, file_path: Union[str, Path, BinaryIO], file_name: str = None) -> Dict:
+    async def upload_file(self, file_path: Union[str, Path, BinaryIO], file_name: str = None, is_long_term:bool = False) -> Dict:
         """
         上传文件到临时文件服务
 
         Args:
             file_path: 文件路径或文件对象
             file_name: 文件名（如果file_path是文件对象，则必须提供）
+            is_long_term: 是否长期保存
 
         Returns:
             上传结果，包含访问URL
@@ -151,7 +152,7 @@ class AIHubMaxClient:
                 "quota": 1
             }
         """
-        url = f"{AIHUBMAX_API_HOST}{TMPFILE_UPLOAD_URI}"
+        url = f"{AIHUBMAX_API_HOST}{TMPFILE_UPLOAD_URI}?is_long_term={is_long_term}"
 
         # 处理不同类型的文件输入
         if isinstance(file_path, (str, Path)):
