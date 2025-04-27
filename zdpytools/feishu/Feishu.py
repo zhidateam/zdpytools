@@ -98,11 +98,41 @@ class Feishu(FeishuBase):
                         if value < 1000000000000:
                             value = int(value * 1000)
                     elif isinstance(value, str):
-                        # 将字符串转换为时间戳，判断范围
-                        try:
-                            value = int(time.mktime(time.strptime(value, "%Y-%m-%d %H:%M:%S")) * 1000)
-                        except ValueError:
-                            pass
+                        # 将字符串转换为时间戳，支持多种格式
+                        if value == "[NOW]":
+                            # 特殊值 [NOW]，使用当前时间
+                            value = int(time.time() * 1000)
+                        else:
+                            # 尝试多种日期格式
+                            formats_to_try = [
+                                "%Y-%m-%d %H:%M:%S",  # 标准格式
+                                "%Y-%m-%dT%H:%M:%S",  # ISO格式不带毫秒
+                                "%Y-%m-%dT%H:%M:%S.%f",  # ISO格式带毫秒
+                                "%Y-%m-%d",  # 仅日期
+                                "%Y/%m/%d %H:%M:%S",  # 斜杠分隔
+                                "%Y/%m/%d"  # 仅日期，斜杠分隔
+                            ]
+                            converted = False
+                            for date_format in formats_to_try:
+                                try:
+                                    value = int(time.mktime(time.strptime(value, date_format)) * 1000)
+                                    converted = True
+                                    break  # 成功解析，跳出循环
+                                except ValueError:
+                                    continue  # 尝试下一个格式
+
+                            # 如果所有格式都失败，但字符串是纯数字，可能已经是时间戳
+                            if not converted and isinstance(value, str) and value.isdigit():
+                                timestamp = int(value)
+                                # 检查是否是秒级时间戳（10位数）
+                                if len(value) == 10:
+                                    value = timestamp * 1000
+                                # 如果是毫秒级时间戳（13位数），直接使用
+                                elif len(value) == 13:
+                                    value = timestamp
+
+                            if not converted and not (isinstance(value, str) and value.isdigit()):
+                                logger.debug(f"日期格式错误，无法转换: {value}")
                     elif isinstance(value, datetime.datetime):
                         value = int(value.timestamp() * 1000)
                     fields[key] = value
