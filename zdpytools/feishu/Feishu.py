@@ -63,6 +63,13 @@ class Feishu(FeishuBase):
         :param fields: 更新字段
         """
         origin_fileds = await self.get_tables_fields(app_token, table_id)
+
+        # 创建一个要删除的键的列表，避免在迭代过程中修改字典
+        keys_to_remove = []
+
+        # 创建一个要更新的值的字典
+        values_to_update = {}
+
         for key, value in fields.items():
             # 不存在字段，创建
             if key not in origin_fileds:
@@ -97,11 +104,19 @@ class Feishu(FeishuBase):
                         # 将秒数转换为毫秒数，判断范围；大约是 2001 年 9 月 9 日的毫秒级时间戳。
                         if value < 1000000000000:
                             value = int(value * 1000)
+                            values_to_update[key] = value
                     elif isinstance(value, str):
+                        # 处理空字符串情况
+                        if value == "":
+                            # 对于空字符串，标记为要删除
+                            keys_to_remove.append(key)
+                            # 跳过后续处理
+                            continue
                         # 将字符串转换为时间戳，支持多种格式
-                        if value == "[NOW]":
+                        elif value == "[NOW]":
                             # 特殊值 [NOW]，使用当前时间
                             value = int(time.time() * 1000)
+                            values_to_update[key] = value
                         else:
                             # 尝试多种日期格式
                             formats_to_try = [
@@ -130,12 +145,24 @@ class Feishu(FeishuBase):
                                 # 如果是毫秒级时间戳（13位数），直接使用
                                 elif len(value) == 13:
                                     value = timestamp
+                                converted = True
 
-                            if not converted and not (isinstance(value, str) and value.isdigit()):
+                            if converted:
+                                values_to_update[key] = value
+                            else:
                                 logger.debug(f"日期格式错误，无法转换: {value}")
+                                # 对于无法转换的日期，标记为要删除
+                                keys_to_remove.append(key)
+                                # 跳过后续处理
+                                continue
                     elif isinstance(value, datetime.datetime):
                         value = int(value.timestamp() * 1000)
-                    fields[key] = value
+                        values_to_update[key] = value
+                    elif value is None:
+                        # 对于None值，标记为要删除
+                        keys_to_remove.append(key)
+                        # 跳过后续处理
+                        continue
                 elif type==17:
                     #附件，自动把url或者二进制内容或者文件路径转为file_token
                     try:
@@ -152,11 +179,27 @@ class Feishu(FeishuBase):
                         # 确保附件字段的值是列表格式，即使只有一个附件
                         if file_tokens:
                             # 飞书附件字段要求值必须是对象列表
-                            fields[key] = file_tokens
+                            values_to_update[key] = file_tokens
                             logger.debug(f"附件字段 '{key}' 转换成功: {file_tokens}")
+                        else:
+                            # 如果没有有效的文件令牌，标记为要删除
+                            keys_to_remove.append(key)
                     except Exception as e:
                         logger.error(f"附件转换失败: {e}\n{traceback.format_exc()}")
+                        # 转换失败时，标记为要删除
+                        keys_to_remove.append(key)
+
+        # 应用所有更新
+        for key, value in values_to_update.items():
+            fields[key] = value
+
+        # 删除所有标记为要删除的键
+        for key in keys_to_remove:
+            if key in fields:
+                fields.pop(key)
+
         # 移除value=None或者""的，不必要上传
+        # 注意：日期字段(type=5)的空值已在上面的逻辑中处理，这里是对其他类型字段的处理
         fields = {k: v for k, v in fields.items() if v is not None and v != ""}
 
     async def get_tables_fields(self, app_token: str, table_id: str) -> dict:
