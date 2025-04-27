@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="zdpytools",
-    version="0.1.26",
+    version="0.1.27",
     author="zhidateam",
     author_email="zhidateam@163.com",
     description="Python工具集，包含飞书API、AutoDL API和日志工具",

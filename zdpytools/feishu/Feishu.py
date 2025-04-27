@@ -156,7 +156,8 @@ class Feishu(FeishuBase):
                             logger.debug(f"附件字段 '{key}' 转换成功: {file_tokens}")
                     except Exception as e:
                         logger.error(f"附件转换失败: {e}\n{traceback.format_exc()}")
-
+        # 移除value=None或者""的，不必要上传
+        fields = {k: v for k, v in fields.items() if v is not None and v != ""}
 
     async def get_tables_fields(self, app_token: str, table_id: str) -> dict:
         """
