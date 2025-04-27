@@ -407,14 +407,14 @@ class Feishu(FeishuBase):
         # 检查文件扩展名
         file_ext = os.path.splitext(file_name.lower())[1]
         if file_ext in image_extensions:
-            return "docx_image"  # 新版文档图片
+            return "bitable_image"  # 新版文档图片
 
         # 如果提供了MIME类型，也检查它
         if content_type and content_type.startswith("image/"):
-            return "docx_image"  # 新版文档图片
+            return "bitable_image"  # 新版文档图片
 
-        # 默认使用docx_file
-        return "docx_file"  # 新版文档文件
+        # 默认使用bitable_file
+        return "bitable_file"  # 新版文档文件
 
     async def _convert_to_file_token(self, value: Union[str, bytes], app_token: str, table_id: str) -> Optional[Dict[str, Any]]:
         """

@@ -157,7 +157,7 @@ class FeishuBase:
             await self.client.aclose()
 
     async def upload_media(self, file_path: str = None, file_content: bytes = None, file_name: str = None,
-                          parent_type: str = "docx_image", parent_node: str = None,
+                          parent_type: str = "bitable_image", parent_node: str = None,
                           extra: Optional[Union[str, Dict[str, Any]]] = None) -> dict:
         """
         上传素材到飞书云文档
@@ -167,10 +167,10 @@ class FeishuBase:
         :param file_name: 文件名称，如果使用file_path且未提供file_name，则使用file_path的文件名
         :param parent_type: 上传点类型，可选值包括：
                           - doc_image：旧版文档图片
-                          - docx_image：新版文档图片
+                          - bitable_image：新版文档图片
                           - sheet_image：电子表格图片
                           - doc_file：旧版文档文件
-                          - docx_file：新版文档文件
+                          - bitable_file：新版文档文件
         :param parent_node: 上传点的token，即要上传到的云文档token
         :param extra: 额外参数，格式为字典或JSON字符串，例如：{"drive_route_token":"doxcnXgNGAtaAraIRVeCfmabcef"}
         :return: 响应数据，包含file_token
