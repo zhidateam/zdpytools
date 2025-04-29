@@ -391,3 +391,78 @@ type可选值有：
 
         resp = await self.req_feishu_api("POST", url=url, req_body=req_body)
         return resp.get("data")
+
+    async def batch_create_permissions(self, token: str, members: list, doc_type: str, need_notification: bool = False) -> dict:
+        """
+        批量添加协作者权限
+
+        :param token: 云文档的 token，需要与 doc_type 参数指定的云文档类型相匹配
+        :param members: 本次要增加权限的协作者列表，格式为包含成员信息的字典列表，最多10个成员
+                      每个成员字典包含：
+                      - member_type: 成员类型，可选值：
+                        - email: 邮箱
+                        - openid: 开放平台ID
+                        - unionid: 统一ID
+                        - userid: 用户ID
+                        - chat_id: 群组ID
+                        - department_id: 部门ID
+                      - member_id: 成员ID，与member_type对应
+                      - perm: 权限类型，可选值：
+                        - view: 可阅读
+                        - edit: 可编辑
+                        - full_access: 可管理
+        :param doc_type: 云文档类型，需要与云文档的 token 相匹配，可选值：
+                       - doc：旧版文档
+                       - sheet：电子表格
+                       - file：云空间文件
+                       - wiki：知识库节点
+                       - bitable：多维表格
+        :param need_notification: 添加权限后是否通知对方，默认 False（不通知）
+                                True: 通知
+                                False: 不通知
+        :return: 响应数据，包含添加结果
+        {
+            "code": 0,
+            "data": {
+                "results": [
+                    {
+                        "member": {
+                            "member_id": "ou_7dab8a3d3cdcc9da365777c7ad535d62",
+                            "member_type": "openid"
+                        },
+                        "perm": "view"
+                    }
+                ]
+            },
+            "msg": "success"
+        }
+
+        文档: https://open.feishu.cn/document/server-docs/docs/drive-v1/permission/members/batch_create
+        """
+        # 验证参数
+        if not token:
+            raise ValueError("必须提供token参数")
+        if not members or not isinstance(members, list) or len(members) == 0:
+            raise ValueError("必须提供members参数，且为非空列表")
+        if len(members) > 10:
+            raise ValueError("members列表最多包含10个成员")
+        if not doc_type:
+            raise ValueError("必须提供doc_type参数")
+
+        # 构建URL
+        url = f"{FEISHU_HOST}{BATCH_CREATE_PERMISSIONS_URI}".replace(":token", token)
+
+        # 添加查询参数
+        params = {"type": doc_type}
+        if need_notification is not None:
+            params["need_notification"] = str(need_notification).lower()
+
+        # 构建完整URL
+        url = f"{url}?{urlencode(params)}"
+
+        # 构建请求体
+        req_body = {"members": members}
+
+        # 发送请求
+        resp = await self.req_feishu_api("POST", url=url, req_body=req_body)
+        return resp.get("data")

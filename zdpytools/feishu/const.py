@@ -25,3 +25,6 @@ UPLOAD_MEDIA_URI = '/open-apis/drive/v1/medias/upload_all'
 
 # 复制多维表格 https://open.feishu.cn/document/server-docs/docs/bitable-v1/app/copy
 BITABLE_COPY_URI = '/open-apis/bitable/v1/apps/:app_token/copy'
+
+# 批量添加协作者权限 https://open.feishu.cn/document/server-docs/docs/drive-v1/permission/members/batch_create
+BATCH_CREATE_PERMISSIONS_URI = '/open-apis/drive/v1/permissions/:token/members/batch_create'
