@@ -31,3 +31,6 @@ BATCH_CREATE_PERMISSIONS_URI = '/open-apis/drive/v1/permissions/:token/members/b
 
 # 转移所有者权限 https://open.feishu.cn/document/server-docs/docs/drive-v1/permission/members/transfer_owner
 TRANSFER_OWNER_URI = '/open-apis/drive/v1/permissions/:token/members/transfer_owner'
+
+# 列出数据表 https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/list
+BITABLE_TABLES_LIST_URI = '/open-apis/bitable/v1/apps/:app_token/tables'

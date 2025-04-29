@@ -467,6 +467,50 @@ type可选值有：
         resp = await self.req_feishu_api("POST", url=url, req_body=req_body)
         return resp.get("data")
 
+    async def list_tables(self, app_token: str, page_token: str = None, page_size: int = None) -> dict:
+        """
+        列出多维表格中的所有数据表，包括其 ID、版本号和名称。
+
+        :param app_token: 多维表格 App 的唯一标识
+        :param page_token: 分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token
+        :param page_size: 分页大小，默认20，最大100
+        :return: 响应数据，包含数据表列表
+        {
+            "code": 0,
+            "msg": "success",
+            "data": {
+                "has_more": false,
+                "page_token": "tblKz5D60T4JlfcT",
+                "total": 1,
+                "items": [
+                    {
+                        "table_id": "tblKz5D60T4JlfcT",
+                        "revision": 1,
+                        "name": "数据表1"
+                    }
+                ]
+            }
+        }
+
+        文档: https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/list
+        """
+        url = f"{FEISHU_HOST}{BITABLE_TABLES_LIST_URI}".replace(":app_token", app_token)
+
+        # 构建查询参数
+        params = {}
+        if page_token:
+            params["page_token"] = page_token
+        if page_size:
+            params["page_size"] = page_size
+
+        # 添加查询参数到URL
+        if params:
+            url = f"{url}?{urlencode(params)}"
+
+        # 发送请求
+        resp = await self.req_feishu_api("GET", url=url)
+        return resp.get("data")
+
     async def transfer_owner(self, token: str, member_type: str, member_id: str, doc_type: str,
                             need_notification: bool = True, remove_old_owner: bool = False,
                             stay_put: bool = False, old_owner_perm: str = "full_access") -> dict:

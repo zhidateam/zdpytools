@@ -37,10 +37,41 @@ async def example():
         # 查询多维表格记录
         result = await fs.bitable_records_search("app_token", "table_id")
         print(result)
+
+        # 列出多维表格中的所有数据表
+        tables = await fs.get_all_tables("app_token")
+        for table in tables:
+            print(f"表格ID: {table.get('id')}, 名称: {table.get('name')}")
     finally:
         await fs.close()
 
 asyncio.run(example())
+```
+
+#### 飞书多维表格API
+
+##### 列出数据表
+
+```python
+# 基本用法，获取第一页数据表
+result = await fs.list_tables(app_token="YOUR_APP_TOKEN")
+
+# 指定页面大小
+result = await fs.list_tables(
+    app_token="YOUR_APP_TOKEN",
+    page_size=5
+)
+
+# 使用分页标记获取下一页
+if result.get("has_more") and result.get("page_token"):
+    next_page = await fs.list_tables(
+        app_token="YOUR_APP_TOKEN",
+        page_token=result.get("page_token"),
+        page_size=5
+    )
+
+# 获取所有数据表（自动处理分页）
+all_tables = await fs.get_all_tables(app_token="YOUR_APP_TOKEN")
 ```
 
 ### AutoDL API
