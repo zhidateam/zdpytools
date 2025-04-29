@@ -28,3 +28,6 @@ BITABLE_COPY_URI = '/open-apis/bitable/v1/apps/:app_token/copy'
 
 # 批量添加协作者权限 https://open.feishu.cn/document/server-docs/docs/drive-v1/permission/members/batch_create
 BATCH_CREATE_PERMISSIONS_URI = '/open-apis/drive/v1/permissions/:token/members/batch_create'
+
+# 转移所有者权限 https://open.feishu.cn/document/server-docs/docs/drive-v1/permission/members/transfer_owner
+TRANSFER_OWNER_URI = '/open-apis/drive/v1/permissions/:token/members/transfer_owner'

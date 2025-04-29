@@ -466,3 +466,92 @@ type可选值有：
         # 发送请求
         resp = await self.req_feishu_api("POST", url=url, req_body=req_body)
         return resp.get("data")
+
+    async def transfer_owner(self, token: str, member_type: str, member_id: str, doc_type: str,
+                            need_notification: bool = True, remove_old_owner: bool = False,
+                            stay_put: bool = False, old_owner_perm: str = "full_access") -> dict:
+        """
+        转移云文档所有者权限
+
+        :param token: 云文档的 token，需要与 doc_type 参数指定的云文档类型相匹配
+        :param member_type: 新所有者的 ID 类型，可选值：
+                          - email：飞书邮箱
+                          - openid：开放平台ID
+                          - userid：用户自定义ID
+        :param member_id: 新所有者的 ID，与 member_type 对应
+        :param doc_type: 云文档类型，需要与云文档的 token 相匹配，可选值：
+                       - doc：文档
+                       - sheet：电子表格
+                       - file：云空间文件
+                       - wiki：知识库节点
+                       - bitable：多维表格
+        :param need_notification: 是否需要通知新的文件所有者，默认 True（通知）
+                                True: 通知
+                                False: 不通知
+        :param remove_old_owner: 转移后是否需要移除原文件所有者的权限，默认 False（不移除）
+                               True: 移除
+                               False: 不移除
+        :param stay_put: 仅当文件在个人文件夹下，此参数才会生效。默认 False（移动到新所有者空间）
+                       True: 留在原位置
+                       False: 移动到新所有者的空间下
+        :param old_owner_perm: 仅当 remove_old_owner = False 时，此参数才会生效
+                             保留原文件所有者指定的权限角色，默认 "full_access"（可管理）
+                             可选值：
+                             - view: 可阅读
+                             - edit: 可编辑
+                             - full_access: 可管理
+        :return: 响应数据，包含转移结果
+        {
+            "code": 0,
+            "data": {},
+            "msg": "success"
+        }
+
+        文档: https://open.feishu.cn/document/server-docs/docs/drive-v1/permission/members/transfer_owner
+        """
+        # 验证参数
+        if not token:
+            raise ValueError("必须提供token参数")
+        if not member_type:
+            raise ValueError("必须提供member_type参数")
+        if not member_id:
+            raise ValueError("必须提供member_id参数")
+        if not doc_type:
+            raise ValueError("必须提供doc_type参数")
+
+        # 验证member_type是否为有效值
+        valid_member_types = ["email", "openid", "userid"]
+        if member_type not in valid_member_types:
+            raise ValueError(f"member_type参数必须为以下值之一: {', '.join(valid_member_types)}")
+
+        # 验证old_owner_perm是否为有效值
+        valid_perms = ["view", "edit", "full_access"]
+        if old_owner_perm not in valid_perms:
+            raise ValueError(f"old_owner_perm参数必须为以下值之一: {', '.join(valid_perms)}")
+
+        # 构建URL
+        url = f"{FEISHU_HOST}{TRANSFER_OWNER_URI}".replace(":token", token)
+
+        # 添加查询参数
+        params = {"type": doc_type}
+        if need_notification is not None:
+            params["need_notification"] = str(need_notification).lower()
+        if remove_old_owner is not None:
+            params["remove_old_owner"] = str(remove_old_owner).lower()
+        if stay_put is not None:
+            params["stay_put"] = str(stay_put).lower()
+        if old_owner_perm and not remove_old_owner:
+            params["old_owner_perm"] = old_owner_perm
+
+        # 构建完整URL
+        url = f"{url}?{urlencode(params)}"
+
+        # 构建请求体
+        req_body = {
+            "member_type": member_type,
+            "member_id": member_id
+        }
+
+        # 发送请求
+        resp = await self.req_feishu_api("POST", url=url, req_body=req_body)
+        return resp.get("data")
