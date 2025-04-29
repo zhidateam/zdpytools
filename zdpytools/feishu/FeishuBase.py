@@ -345,3 +345,49 @@ type可选值有：
 
         resp = await self.req_feishu_api(action, url=url, req_body=req_body)
         return resp.get('data')
+
+    async def copy_bitable(self, app_token: str, name: str = None, folder_token: str = None,
+                          without_content: bool = False, time_zone: str = None) -> dict:
+        """
+        复制多维表格
+
+        :param app_token: 要复制的多维表格 App 的唯一标识
+        :param name: 多维表格 App 的名称，可选
+        :param folder_token: 目标文件夹的 token，可选。如果指定，则复制到该文件夹下
+        :param without_content: 是否复制多维表格中的内容，默认 False（复制内容）
+                              True: 不复制内容
+                              False: 复制内容
+        :param time_zone: 文档时区，例如 "Asia/Shanghai"，可选
+        :return: 响应数据，包含新创建的多维表格信息
+        {
+        "code": 0,
+        "data": {
+            "app": {
+            "app_token": "KnwLblU5daG9zdsJEGrceYBRntf",
+            "default_table_id": "",
+            "folder_token": "Dio2fa1WClP8qYdIXkrcpTkhnId",
+            "name": "一篇新的多维表格",
+            "time_zone": "Asia/Shanghai",
+            "url": "https://bcns75ga0lpd.feishu.cn/base/KnwLblU5daG9zdsJEGrceYBRntf"
+            }
+        },
+        "msg": "success"
+        }
+
+        文档: https://open.feishu.cn/document/server-docs/docs/bitable-v1/app/copy
+        """
+        url = f"{FEISHU_HOST}{BITABLE_COPY_URI}".replace(":app_token", app_token)
+
+        # 构建请求体
+        req_body = {}
+        if name:
+            req_body["name"] = name
+        if folder_token:
+            req_body["folder_token"] = folder_token
+        if without_content is not None:
+            req_body["without_content"] = without_content
+        if time_zone:
+            req_body["time_zone"] = time_zone
+
+        resp = await self.req_feishu_api("POST", url=url, req_body=req_body)
+        return resp.get("data")

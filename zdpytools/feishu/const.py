@@ -22,3 +22,6 @@ BATCH_GET_TMP_DOWNLOAD_URL = '/open-apis/drive/v1/medias/batch_get_tmp_download_
 
 # 上传素材 https://open.feishu.cn/document/server-docs/docs/drive-v1/media/upload_all
 UPLOAD_MEDIA_URI = '/open-apis/drive/v1/medias/upload_all'
+
+# 复制多维表格 https://open.feishu.cn/document/server-docs/docs/bitable-v1/app/copy
+BITABLE_COPY_URI = '/open-apis/bitable/v1/apps/:app_token/copy'

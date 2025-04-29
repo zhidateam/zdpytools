@@ -466,6 +466,39 @@ class Feishu(FeishuBase):
         total = res.get('total', 0)
         return {'record_id': record_id, 'fields': fields, 'total':total}
 
+    async def copy_bitable(self, app_token: str, name: str = None, folder_token: str = None,
+                          without_content: bool = False, time_zone: str = "Asia/Shanghai") -> dict:
+        """
+        复制多维表格
+
+        :param app_token: 要复制的多维表格 App 的唯一标识
+        :param name: 多维表格 App 的名称，可选。如果不指定，将使用原表格名称
+        :param folder_token: 目标文件夹的 token，可选。如果指定，则复制到该文件夹下
+        :param without_content: 是否复制多维表格中的内容，默认 False（复制内容）
+                              True: 不复制内容
+                              False: 复制内容
+        :param time_zone: 文档时区，默认 "Asia/Shanghai"
+        :return: 复制后的多维表格信息，包含 app_token 等
+
+        文档: https://open.feishu.cn/document/server-docs/docs/bitable-v1/app/copy
+        """
+        try:
+            result = await super().copy_bitable(
+                app_token=app_token,
+                name=name,
+                folder_token=folder_token,
+                without_content=without_content,
+                time_zone=time_zone
+            )
+
+            if self.print_feishu_log:
+                logger.info(f"复制多维表格成功: {result}")
+
+            return result
+        except Exception as e:
+            logger.error(f"复制多维表格失败: {e}\n{traceback.format_exc()}")
+            raise
+
 
     def _determine_parent_type(self, file_name: str, content_type: str = None) -> str:
         """
