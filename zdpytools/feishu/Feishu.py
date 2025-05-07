@@ -51,7 +51,19 @@ class Feishu(FeishuBase):
         :return: 更新结果
         """
         await self.check_fileds(app_token, table_id, fields)
-        res = await self.update_bitable_record(app_token, table_id, record_id=record_id, fields=fields)
+        # 检查记录是否存在
+        is_record_exist = False
+        try:
+            record = await self.bitable_record(app_token, table_id, record_id)
+            is_record_exist = True
+        except Exception as e:
+            # 如果不是记录不存在，则抛出异常
+            if not "RecordIdNotFound" in str(e):
+                raise e
+        if is_record_exist:
+            res = await self.update_bitable_record(app_token, table_id, record_id=record_id, fields=fields)
+        else:
+            res = await self.update_bitable_record(app_token, table_id, fields=fields)
         return res
 
     async def check_fileds(self, app_token: str, table_id: str, fields: dict) -> None:
