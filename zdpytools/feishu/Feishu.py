@@ -64,6 +64,8 @@ class Feishu(FeishuBase):
             res = await self.update_bitable_record(app_token, table_id, record_id=record_id, fields=fields)
         else:
             res = await self.update_bitable_record(app_token, table_id, fields=fields)
+        # 将record_id取外一层
+        res['record_id'] = res.get("record").get('record_id')
         return res
 
     async def check_fileds(self, app_token: str, table_id: str, fields: dict) -> None:
