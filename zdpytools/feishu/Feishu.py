@@ -89,12 +89,18 @@ class Feishu(FeishuBase):
                 field_type = 1  # 默认为文本类型
 
                 # 判断是否为日期类型
-                if "时间" in key or "日期" in key:
+                if "时间" == key or "日期" == key or key.endswith("时间") or key.endswith("日期"):
                     field_type = 5  # 日期类型
-                elif "编号" in key:
+                elif "编号" == key or "自动编号" == key:
                     field_type = 1005  # 自动编号类型
                 elif isinstance(value, (int, float)):
                     field_type = 2  # 数字类型
+                # 如果值为list[str],则为多选类型
+                elif isinstance(value, list) and all(isinstance(item, str) for item in value):
+                    field_type = 4  # 多选类型
+                # 如果是bool类型，则为复选框类型
+                elif isinstance(value, bool):
+                    field_type = 7  # 复选框类型
 
                 req_body = {
                     "field_name": key,
