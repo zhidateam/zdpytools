@@ -99,11 +99,7 @@ class Feishu(FeishuBase):
                     field_type = 2  # 数字类型
                 # 如果值为list[str],则为多选类型
                 elif isinstance(value, list) and all(isinstance(item, str) for item in value):
-                    #如果元素是url则是附件类型，否则是多选
-                    if all(re.match(r'^https?://\S+$', item) for item in value):
-                        field_type = 17  # 附件类型
-                    else:
-                        field_type = 4  # 多选类型
+                    field_type = 4  # 多选类型
                 # 如果是bool类型，则为复选框类型
                 elif isinstance(value, bool):
                     field_type = 7  # 复选框类型
