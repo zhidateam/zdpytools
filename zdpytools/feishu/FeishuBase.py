@@ -85,8 +85,10 @@ class FeishuBase:
                 raise ValueError(f"不支持的请求方法: {method}")
 
             if check_status and response.status_code != 200:
-                logger.error(f"HTTP 状态码异常: {response.status_code}, 响应内容: {response.text}")
-                raise LarkException(code=response.status_code, msg="HTTP状态码异常", url=url, req_body=req_body, headers=headers)
+                error_msg = f"HTTP 状态码异常: {response.status_code}, 响应内容: {response.text}"
+                logger.error(error_msg)
+                raise LarkException(code=response.status_code, msg=error_msg, 
+                                    url=url, req_body=req_body, headers=headers)
 
             resp_data = response.json()
 
