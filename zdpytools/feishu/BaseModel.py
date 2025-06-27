@@ -117,7 +117,7 @@ class BaseModel:
         # 处理整数、浮点数等非可迭代类型
         if isinstance(value, (int, float)):
             #判断如果key包含时间字样
-            if "时间" in key:
+            if "时间" in key or "日期" in key:
                 try:
                     return datetime.fromtimestamp(value/1000).strftime('%Y-%m-%d %H:%M:%S')
                 except (OSError, ValueError, OverflowError) as e:
