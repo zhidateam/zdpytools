@@ -84,22 +84,34 @@ class FeishuBase:
             else:
                 raise ValueError(f"不支持的请求方法: {method}")
 
-            if check_status and response.status_code != 200:
-                error_msg = f"HTTP 状态码异常: {response.status_code}, 响应内容: {response.text}"
-                logger.error(error_msg)
-                raise LarkException(code=response.status_code, msg=error_msg, 
-                                    url=url, req_body=req_body, headers=headers)
+            try:
+                response_json = response.json()
+                if not response_json.get("data"):
+                    logger.error(f"接口返回错误, URL: {url}, 错误信息: {response_json}")
+                    raise LarkException(code=response_json.get("code"), msg=response_json, url=url, req_body=req_body, headers=headers)
+                
+                return response_json
+            except json.JSONDecodeError:
+                response_text = response.text
+                logger.error(f"解析响应 JSON 失败: {response_text}")
+                raise LarkException(code=response.status_code, msg=f"响应解析失败, 响应内容: {response_text}", url=url, req_body=req_body, headers=headers)
 
-            resp_data = response.json()
+            # if check_status and response.status_code != 200:
+            #     error_msg = f"HTTP 状态码异常: {response.status_code}, 响应内容: {response.text}"
+            #     logger.error(error_msg)
+            #     raise LarkException(code=response.status_code, msg=error_msg, 
+            #                         url=url, req_body=req_body, headers=headers)
 
-            if self.print_feishu_log:
-                logger.debug(f"飞书接口响应: {resp_data}")
+            # resp_data = response.json()
 
-            if check_code and resp_data.get("code", -1) != 0:
-                logger.error(f"接口返回错误, URL: {url}, 错误信息: {resp_data}")
-                raise LarkException(code=resp_data.get("code"), msg=resp_data.get("msg"), url=url, req_body=req_body, headers=headers)
+            # if self.print_feishu_log:
+            #     logger.debug(f"飞书接口响应: {resp_data}")
 
-            return resp_data
+            # if check_code and resp_data.get("code", -1) != 0:
+            #     logger.error(f"接口返回错误, URL: {url}, 错误信息: {resp_data}")
+            #     raise LarkException(code=resp_data.get("code"), msg=resp_data.get("msg"), url=url, req_body=req_body, headers=headers)
+
+            # return resp_data
         except httpx.HTTPError as e:
             logger.error(f"请求飞书接口异常: {e}, URL: {url}")
             raise LarkException(code=-1, msg=f"请求失败: {str(e)}", url=url, req_body=req_body, headers=headers)
